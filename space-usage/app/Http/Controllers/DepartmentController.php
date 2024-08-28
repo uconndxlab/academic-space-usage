@@ -12,7 +12,11 @@ class DepartmentController extends Controller
      */
     public function index()
     {
-        //
+        // Fetch all departments
+        $departments = Department::all();
+
+        // Return the view with departments data
+        return view('departments.index', compact('departments'));
     }
 
     /**
@@ -34,9 +38,13 @@ class DepartmentController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Department $department)
+    public function show($id)
     {
-        //
+        // Fetch the department with its related courses and enrollments
+        $department = Department::with(['courses'])->findOrFail($id);
+
+        // Return the view with department data
+        return view('departments.show', compact('department'));
     }
 
     /**

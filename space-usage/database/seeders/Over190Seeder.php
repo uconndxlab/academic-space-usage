@@ -1,14 +1,12 @@
 <?php
-
 namespace Database\Seeders;
-
 use Illuminate\Database\Seeder;
 use App\Models\Room;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Department;
-use League\Csv\Reader;
 use Illuminate\Support\Facades\DB;
+use League\Csv\Reader;
 
 class Over190Seeder extends Seeder
 {
@@ -25,6 +23,21 @@ class Over190Seeder extends Seeder
         $csv = Reader::createFromPath(database_path('over-190.csv'), 'r');
         $csv->setHeaderOffset(0); // Assume the first row is the header
 
+        $records = $csv->getRecords();
+
+        // Create a list of unique departments from Subject_Code
+        $subjectCodes = [];
+
+        foreach ($records as $record) {
+            $subjectCode = $record['Subject_Code'];
+            if (!in_array($subjectCode, $subjectCodes)) {
+                $subjectCodes[] = $subjectCode;
+                Department::firstOrCreate(['name' => $subjectCode]);
+            }
+        }
+
+        // Reset CSV pointer and process records again
+        $csv->setHeaderOffset(0); // Reset header offset
         $records = $csv->getRecords();
 
         foreach ($records as $record) {
@@ -59,12 +72,10 @@ class Over190Seeder extends Seeder
                 'enrl_cap' => $record['Enrl_Cap'],
             ]);
 
-            // Create or attach Departments
-            foreach ($record as $key => $value) {
-                if (!empty($value) && !in_array($key, ['Room_Utilization', 'Seat_Utilization', 'Include Y/N', 'Subject_Code', 'BLDG_ROOM', 'Subject_Course', 'CLASS_DESCR', 'building', 'building_code', 'Room', 'Term_Code', 'TERM', 'Catalog_Number', 'Section', 'class_duration_weekly', 'Duration_minutes', 'Division', 'Component_Code', 'Class_NBR', 'Day10_Enroll', 'WSCH_Max', 'Enrl_Cap', 'Capacity', 'Room_Description', 'Sum_Enrollment', 'Bldg_Description'])) {
-                    $department = Department::firstOrCreate(['name' => $key]);
-                    $course->departments()->attach($department);
-                }
+            // Attach the department based on the Subject_Code
+            $department = Department::where('name', $record['Subject_Code'])->first();
+            if ($department) {
+                $course->departments()->attach($department);
             }
         }
     }
