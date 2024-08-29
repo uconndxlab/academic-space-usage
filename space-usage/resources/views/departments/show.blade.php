@@ -1,4 +1,4 @@
-@extends('layouts.app')')
+@extends('layouts.app')
 
 @section('content')
 <div class="container">
@@ -24,7 +24,6 @@
             </thead>
             <tbody>
                 @foreach($department->courses as $course)
-                    @foreach($course->enrollments as $enrollment)
                         <tr>
                             <td>{{ $course->subject_code }}</td>
                             <td>{{ $course->catalog_number }}</td>
@@ -33,11 +32,10 @@
                             <td>{{ $course->term }}</td>
                             <td>{{ $course->class_duration_weekly }}</td>
                             <td>{{ $course->duration_minutes }}</td>
-                            <td>{{ $enrollment->enrl_cap }}</td>
-                            <td>{{ $enrollment->day10_enroll }}</td>
+                            <td>{{ $course->enrl_cap }}</td>
+                            <td>{{ $course->day10_enroll }}</td>
                             <td>{{ $course->room->building_code }} {{ $course->room->room_number }}</td>
                         </tr>
-                    @endforeach
                 @endforeach
             </tbody>
         </table>

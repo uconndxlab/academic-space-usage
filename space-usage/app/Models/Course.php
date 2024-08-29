@@ -23,16 +23,14 @@ class Course extends Model
         'division',
         'component_code',
         'class_nbr',
+        'day10_enroll',
+        'wsch_max',
+        'enrl_cap',
     ];
 
     public function room()
     {
         return $this->belongsTo(Room::class);
-    }
-
-    public function enrollments()
-    {
-        return $this->hasMany(Enrollment::class);
     }
 
     public function departments()

@@ -47,6 +47,15 @@ class DepartmentController extends Controller
         return view('departments.show', compact('department'));
     }
 
+    public function showByName($name)
+    {
+        // Fetch the department with its related courses and enrollments
+        $department = Department::with(['courses'])->where('name', $name)->first();
+
+        // Return the view with department data
+        return view('departments.show', compact('department'));
+    }
+
     /**
      * Show the form for editing the specified resource.
      */

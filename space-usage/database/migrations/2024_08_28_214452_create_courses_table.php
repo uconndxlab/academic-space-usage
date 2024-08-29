@@ -25,6 +25,9 @@ return new class extends Migration
             $table->string('division');
             $table->string('component_code');
             $table->string('class_nbr');
+            $table->integer('day10_enroll');
+            $table->integer('wsch_max');
+            $table->integer('enrl_cap')->nullable();
             $table->timestamps();
         });
     }

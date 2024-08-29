@@ -15,7 +15,6 @@ class Over190Seeder extends Seeder
         // Clear existing data (compatible with SQLite)
         Room::query()->delete();
         Course::query()->delete();
-        Enrollment::query()->delete();
         Department::query()->delete();
         DB::table('course_department')->delete();
 
@@ -63,14 +62,12 @@ class Over190Seeder extends Seeder
                 'division' => $record['Division'],
                 'component_code' => $record['Component_Code'],
                 'class_nbr' => $record['Class_NBR'],
-            ]);
-
-            // Create the Enrollment
-            $course->enrollments()->create([
                 'day10_enroll' => $record['Day10_Enroll'],
                 'wsch_max' => $record['WSCH_Max'],
                 'enrl_cap' => $record['Enrl_Cap'],
             ]);
+
+        
 
             // Attach the department based on the Subject_Code
             $department = Department::where('name', $record['Subject_Code'])->first();
