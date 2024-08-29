@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class Course extends Model
 {
     use HasFactory;
-    
-    protected $fillable = ['subject_code', 'class_descr', 'catalog_number', 'wsch_max', 'term_id'];
+
+    protected $fillable = ['subject_code', 'class_descr', 'catalog_number', 'wsch_max', 'term_id', 'class_duration_weekly', 'duration_minutes'];
 
     public function term()
     {

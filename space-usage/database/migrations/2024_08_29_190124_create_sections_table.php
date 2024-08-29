@@ -15,8 +15,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
             $table->integer('enrol_cap');
+            $table->text('component_code');
             $table->integer('day10_enrol');
             $table->foreignId('room_id')->constrained()->onDelete('cascade');
+            
+            $table->json('enrollments_by_dept')->nullable();
             $table->timestamps();
         });
     }

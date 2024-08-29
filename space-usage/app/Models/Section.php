@@ -9,6 +9,10 @@ class Section extends Model
 {
     use HasFactory;
 
+    protected $casts = [
+        'enrollments_by_dept' => 'array',
+    ];
+
     protected $fillable = ['course_id', 'enrol_cap', 'day10_enrol', 'room_id'];
 
     public function course()
@@ -19,5 +23,16 @@ class Section extends Model
     public function room()
     {
         return $this->belongsTo(Room::class);
+    }
+
+    public function enrollments()
+    {
+        return $this->enrollments_by_dept;
+    }
+
+    // Optional: Method to get enrollments by a specific department
+    public function getEnrollmentByDept($department)
+    {
+        return $this->enrollments_by_dept[$department] ?? 0;
     }
 }

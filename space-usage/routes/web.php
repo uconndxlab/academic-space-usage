@@ -3,19 +3,22 @@
 use Illuminate\Support\Facades\Route;
 use App\Models\Room;
 use App\Models\Course;
-use App\Models\Enrollment;
 use App\Models\Department;
+use App\Models\Building;
+use App\Models\Section;
+use App\Models\Term;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\CourseController;
+use App\Http\Controllers\TermController;
+use App\Http\Controllers\BuildingController;
 
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [TermController::class, 'index'])->name('terms.index');
+Route::get('/terms/{term}', [TermController::class, 'show'])->name('terms.show');
 
-Route::get('/departments', [DepartmentController::class, 'index'])->name('department.index');
-Route::get('/department/{id}', [DepartmentController::class, 'show'])->name('department.show');
-Route::get('/deparatment{name}', [DepartmentController::class, 'showByName'])->name('department.byName');
+Route::get('/buildings/{id}', [BuildingController::class, 'show'])->name('buildings.show');
+
+
 
 Route::get('/sections', [CourseController::class, 'index'])->name('courses.index');
 Route::get('/section/{id}', [CourseController::class, 'show'])->name('courses.show');

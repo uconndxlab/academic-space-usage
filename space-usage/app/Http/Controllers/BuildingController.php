@@ -28,15 +28,29 @@ class BuildingController
      */
     public function store(Request $request)
     {
-        //
+
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Building $building)
+    public function show($id)
     {
-        //
+   
+        $building = Building::with('rooms.sections')->findOrFail($id);
+    
+
+        // Summarize room data
+        $totalRooms = $building->rooms->count();
+        $totalCapacity = $building->rooms->sum('capacity');
+        $totalSections = $building->rooms->sum(function ($room) {
+            return $room->sections->count();
+        });
+        $totalEnrollment = $building->rooms->sum(function ($room) {
+            return $room->sections->sum('day10_enrol');
+        });
+
+        return view('buildings.show', compact('building', 'totalRooms', 'totalCapacity', 'totalSections', 'totalEnrollment'));
     }
 
     /**
