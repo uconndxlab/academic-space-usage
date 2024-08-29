@@ -8,16 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 class Room extends Model
 {
     use HasFactory;
-    protected $fillable = [
-        'building',
-        'building_code',
-        'room_number',
-        'room_description',
-        'capacity',
-    ];
 
-    public function courses()
+    protected $fillable = ['building_id', 'room_descr', 'room_number', 'capacity', 'room_description'];
+
+    public function building()
     {
-        return $this->hasMany(Course::class);
+        return $this->belongsTo(Building::class);
+    }
+
+    public function sections()
+    {
+        return $this->hasMany(Section::class);
     }
 }

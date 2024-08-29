@@ -5,14 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Department extends Model
+class Term extends Model
 {
     use HasFactory;
-
-    protected $fillable = ['name'];
+    
+    protected $fillable = ['term_code', 'term_descr'];
 
     public function courses()
     {
-        return $this->belongsToMany(Course::class, 'course_department');
+        return $this->hasMany(Course::class);
     }
 }

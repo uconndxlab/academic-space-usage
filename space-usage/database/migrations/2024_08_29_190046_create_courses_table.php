@@ -13,21 +13,11 @@ return new class extends Migration
     {
         Schema::create('courses', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('room_id')->constrained()->onDelete('cascade');
             $table->string('subject_code');
+            $table->string('class_descr');
             $table->string('catalog_number');
-            $table->string('section');
-            $table->string('class_descr')->nullable();
-            $table->string('term_code');
-            $table->string('term');
-            $table->integer('class_duration_weekly');
-            $table->integer('duration_minutes');
-            $table->string('division');
-            $table->string('component_code');
-            $table->string('class_nbr');
-            $table->integer('day10_enroll');
-            $table->integer('wsch_max');
-            $table->integer('enrl_cap')->nullable();
+            $table->integer('wsch_max')->nullable();
+            $table->foreignId('term_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });
     }

@@ -4,38 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Room;
 
 class Course extends Model
 {
     use HasFactory;
-
-    protected $fillable = [
-        'room_id',
-        'subject_code',
-        'catalog_number',
-        'section',
-        'class_descr',
-        'term_code',
-        'term',
-        'class_duration_weekly',
-        'duration_minutes',
-        'division',
-        'component_code',
-        'class_nbr',
-        'day10_enroll',
-        'wsch_max',
-        'enrl_cap',
-    ];
-
-    public function room()
-    {
-        return $this->belongsTo(Room::class);
-    }
-
-    public function departments()
-    {
-        return $this->belongsToMany(Department::class, 'course_department');
-    }
     
+    protected $fillable = ['subject_code', 'class_descr', 'catalog_number', 'wsch_max', 'term_id'];
+
+    public function term()
+    {
+        return $this->belongsTo(Term::class);
+    }
+
+    public function sections()
+    {
+        return $this->hasMany(Section::class);
+    }
 }
