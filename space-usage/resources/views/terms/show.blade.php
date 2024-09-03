@@ -40,14 +40,26 @@
             <button class="btn btn-primary" type="submit">Search</button>
         </div>
     </form>
-    <ul class="list-group">
-        @foreach($buildings as $building)
-        <li class="list-group-item">
-            <a href="{{ route('buildings.show', $building->id) }}">
-                {{ $building->description }} ({{ $building->building_code }})
-            </a>
-        </li>
-        @endforeach
-    </ul>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Building</th>
+                <th># Rooms</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($buildings as $building)
+            <tr>
+                <td>
+                    <a href="{{ route('buildings.show', $building->id) }}">
+                        {{ $building->description }} ({{ $building->building_code }})
+                    </a>
+                </td>
+                <td>{{ $building->rooms->count() }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
 </div>
+
 @endsection

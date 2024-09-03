@@ -87,6 +87,7 @@
                 <th>Room</th>
                 <th>Capacity</th>
                 <th>Enrollment</th>
+                <th>% Full</th>
             </tr>
         </thead>
         <tbody>
@@ -106,6 +107,7 @@
                         </td>
                         <td>{{ $room->capacity }}</td>
                         <td>{{ $section->day10_enrol }}</td>
+                        <th>{{ number_format($section->day10_enrol / $room->capacity * 100, 2) }}%</th>
                     </tr>
                 @endforeach
             @endforeach
