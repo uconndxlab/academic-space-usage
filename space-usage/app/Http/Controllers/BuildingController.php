@@ -12,7 +12,8 @@ class BuildingController
      */
     public function index()
     {
-        //
+        $buildings = Building::all();
+        return view('buildings.index', compact('buildings'));
     }
 
     /**

@@ -99,7 +99,11 @@
                                 {{ $section->course->subject_code }} {{ $section->course->catalog_number }}
                             </a>
                         </td>
-                        <td>{{ $building->building_code }} {{ $room->room_number }}</td>
+                        <td>
+                            <a href="{{route('rooms.show', $room->id)}}">
+                            {{ $building->building_code }} {{ $room->room_number }}
+                            </a>
+                        </td>
                         <td>{{ $room->capacity }}</td>
                         <td>{{ $section->day10_enrol }}</td>
                     </tr>

@@ -12,7 +12,8 @@ class RoomController
      */
     public function index()
     {
-        //
+        $rooms = Room::all();
+        return view('rooms.index', compact('rooms'));
     }
 
     /**
@@ -34,9 +35,16 @@ class RoomController
     /**
      * Display the specified resource.
      */
-    public function show(Room $room)
+    public function show($id)
     {
-        //
+        $room = Room::find($id);
+        $totalEnrollment = 0;
+        foreach ($room->sections as $section) {
+            $totalEnrollment += $section->enrollment;
+        }
+        
+        $totalSections = count($room->sections);
+        return view('rooms.show', compact('room', 'totalEnrollment', 'totalSections'));
     }
 
     /**
