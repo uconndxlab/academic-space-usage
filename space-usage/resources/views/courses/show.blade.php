@@ -37,6 +37,9 @@
 
                 <dt class="col-sm-3">Duration Minutes</dt>
                 <dd class="col-sm-9">{{ $course->duration_minutes }}</dd>
+
+                <dt class="col-sm-3">% Full</dt>
+                <dd class="col-sm-9">{{ number_format(($course->sections->sum('day10_enrol') / $course->sections->sum('room.capacity')) * 100, 2) }}%</dd>
             </dl>
 
             <h2> Sections </h2>
@@ -44,16 +47,15 @@
                 <table class="table table-striped table-hover">
                     <thead>
                         <tr>
-                            <th>Section Code</th>
                             <th>Room</th>
                             <th>Capacity</th>
                             <th>Enrollment</th>
+                            <th>% Full</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($course->sections as $section)
                             <tr>
-                                <td>{{ $section->section_code }}</td>
                                 <td>
                                     <a href="{{ route('buildings.show', $section->room->building->id) }}">
                                         {{ $section->room->building->building_code }} {{ $section->room->room_number }}
@@ -61,6 +63,7 @@
                                 </td>
                                 <td>{{ $section->room->capacity }}</td>
                                 <td>{{ $section->day10_enrol }}</td>
+                                <td>{{ number_format(($section->day10_enrol / $section->room->capacity) * 100, 2) }}%</td>
                             </tr>
                         @endforeach
                     </tbody>
