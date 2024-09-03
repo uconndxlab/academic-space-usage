@@ -20,8 +20,8 @@ Route::get('/buildings/{id}', [BuildingController::class, 'show'])->name('buildi
 
 
 
-Route::get('/sections', [CourseController::class, 'index'])->name('courses.index');
-Route::get('/section/{id}', [CourseController::class, 'show'])->name('courses.show');
+Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+Route::get('/course/{id}', [CourseController::class, 'show'])->name('courses.show');
 
 Route::get('course/{subject_code}/{catalog_number}', [CourseController::class, 'showByCodeAndNumber'])->name('course.byCodeAndNumber');
 

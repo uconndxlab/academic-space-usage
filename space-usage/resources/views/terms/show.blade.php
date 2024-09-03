@@ -32,13 +32,21 @@
     </div>
 
     <h2>Buildings</h2>
+    <!-- search for a room -->
+    <form action="{{ route('terms.show', $term->id) }}" method="GET" class="form-inline my-4">
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="Search building..." name="building_searh"
+                value="{{ request('buidling_serach') }}">
+            <button class="btn btn-primary" type="submit">Search</button>
+        </div>
+    </form>
     <ul class="list-group">
         @foreach($buildings as $building)
-            <li class="list-group-item">
-                <a href="{{ route('buildings.show', $building->id) }}">
-                    {{ $building->description }} ({{ $building->building_code }})
-                </a>
-            </li>
+        <li class="list-group-item">
+            <a href="{{ route('buildings.show', $building->id) }}">
+                {{ $building->description }} ({{ $building->building_code }})
+            </a>
+        </li>
         @endforeach
     </ul>
 </div>

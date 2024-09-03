@@ -11,38 +11,61 @@
         </div>
         <div class="card-body">
             <dl class="row">
+{{--                
+            $table->string('subject_code');
+            $table->string('class_descr');
+            $table->string('catalog_number');
+            $table->integer('wsch_max')->nullable();
+            $table->text('class_duration_weekly')->nullable();
+            $table->text('duration_minutes')->nullable();
+--}}
+
                 <dt class="col-sm-3">Subject Code</dt>
                 <dd class="col-sm-9">{{ $course->subject_code }}</dd>
 
-                <dt class="col-sm-3">Catalog Number</dt>
-                <dd class="col-sm-9">
-                    <a href="{{ route('courses.show_by_code_and_number', ['subject_code' => $course->subject_code, 'catalog_number' => $course->catalog_number]) }}">
-                        {{ $course->catalog_number }}
-                    </a>
-                </dd>
-
-                <dt class="col-sm-3">Section</dt>
-                <dd class="col-sm-9">{{ $course->section }}</dd>
-
-                <dt class="col-sm-3">Description</dt>
+                <dt class="col-sm-3">Class Description</dt>
                 <dd class="col-sm-9">{{ $course->class_descr }}</dd>
 
-                <dt class="col-sm-3">Term</dt>
-                <dd class="col-sm-9">{{ $course->term }}</dd>
+                <dt class="col-sm-3">Catalog Number</dt>
+                <dd class="col-sm-9">{{ $course->catalog_number }}</dd>
+
+                <dt class="col-sm-3">Max Weekly Schedule Hours</dt>
+                <dd class="col-sm-9">{{ $course->wsch_max }}</dd>
 
                 <dt class="col-sm-3">Class Duration Weekly</dt>
-                <dd class="col-sm-9">{{ $course->class_duration_weekly }} hours</dd>
+                <dd class="col-sm-9">{{ $course->class_duration_weekly }}</dd>
 
-                <dt class="col-sm-3">Room Capacity</dt>
-                <dd class="col-sm-9">
-                    @foreach($course->rooms() as $room)
-                        {{ $room->capacity }}<br>
-                    @endforeach
-                </dd>
-
-                <dt class="col-sm-3">Total Enrollments</dt>
-                <dd class="col-sm-9">{{ $course->enrollments->count() }}</dd>
+                <dt class="col-sm-3">Duration Minutes</dt>
+                <dd class="col-sm-9">{{ $course->duration_minutes }}</dd>
             </dl>
+
+            <h2> Sections </h2>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Section Code</th>
+                            <th>Room</th>
+                            <th>Capacity</th>
+                            <th>Enrollment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($course->sections as $section)
+                            <tr>
+                                <td>{{ $section->section_code }}</td>
+                                <td>
+                                    <a href="{{ route('buildings.show', $section->room->building->id) }}">
+                                        {{ $section->room->building->building_code }} {{ $section->room->room_number }}
+                                    </a>
+                                </td>
+                                <td>{{ $section->room->capacity }}</td>
+                                <td>{{ $section->day10_enrol }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>

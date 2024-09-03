@@ -49,9 +49,8 @@
     <form action="{{ route('buildings.show', $building->id) }}" method="GET">
         <div class="input-group mb-3">
             <input type="text" class="form-control" placeholder="Search Room #" name="room_number" value="{{ request('room_number') }}">
-            <button class="btn btn-outline-secondary" type="submit">Search</button>
+            <button class="btn btn-primary" type="submit">Search</button>
         </div>
-    </form>
 
     <div class="row">
         @foreach($building->rooms as $room)
@@ -95,7 +94,11 @@
                 @foreach($room->sections as $section)
                     <tr>
                         <td>{{ $section->course->subject_code }}</td>
-                        <td>{{ $section->course->catalog_number }}</td>
+                        <td>
+                            <a href="{{ route('courses.show', $section->course->id) }}">
+                                {{ $section->course->subject_code }} {{ $section->course->catalog_number }}
+                            </a>
+                        </td>
                         <td>{{ $building->building_code }} {{ $room->room_number }}</td>
                         <td>{{ $room->capacity }}</td>
                         <td>{{ $section->day10_enrol }}</td>

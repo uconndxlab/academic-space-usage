@@ -34,9 +34,10 @@ class CourseController
     /**
      * Display the specified resource.
      */
-    public function show(Course $course)
+    public function show($id)
     {
-        //
+        $course = Course::find($id);
+        return view('courses.show', compact('course'));
     }
 
     /**
