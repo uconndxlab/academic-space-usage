@@ -41,6 +41,24 @@
                 </div>
             </div>
         </div>
+
+        <!-- total weekly student contact hours for all sections and courses -->
+        <div class="col-md-3 my-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total WSCH</h5>
+                    @php 
+                        $totalWeeklyStudentContactHours = 0;
+                        foreach($building->rooms as $room) {
+                            foreach($room->sections as $section) {
+                                $totalWeeklyStudentContactHours += $section->day10_enrol * $section->course->duration_minutes / 60;
+                            }
+                        }
+                    @endphp
+                    <p class="card-text">{{ $totalWeeklyStudentContactHours }}</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <h2>Rooms</h2>

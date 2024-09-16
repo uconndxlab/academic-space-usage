@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+@section('title', 'Room Details - ' . $room->room_description)
 @section('content')
 <!-- show all the room details -->
 <div class="container mt-5">
@@ -21,6 +21,24 @@
                 <div class="card-body">
                     <h5 class="card-title">Total Enrollment</h5>
                     <p class="card-text">{{ $totalEnrollment }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- total weekly student contact hours -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total WSCH</h5>
+
+                    @php 
+                        $totalWeeklyStudentContactHours = 0;
+                        foreach($room->sections as $section) {
+                            $totalWeeklyStudentContactHours += $section->day10_enrol * $section->course->duration_minutes / 60;
+                        }
+                    @endphp
+
+                    <p class="card-text">{{ $totalWeeklyStudentContactHours }}</p>
                 </div>
             </div>
         </div>
