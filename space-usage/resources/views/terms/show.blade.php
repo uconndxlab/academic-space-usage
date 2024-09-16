@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+@section('title', 'Term Details')
 @section('content')
 <div class="container">
     <h1>{{ $term->term_descr }} ({{ $term->term_code }})</h1>
@@ -34,9 +34,10 @@
     <h2>Buildings</h2>
     <!-- search for a room -->
     <form action="{{ route('terms.show', $term->id) }}" method="GET" class="form-inline my-4">
+        @csrf
         <div class="input-group">
-            <input type="text" class="form-control" placeholder="Search building..." name="building_searh"
-                value="{{ request('buidling_serach') }}">
+            <input type="text" class="form-control" placeholder="Search building..." name="building_search"
+                value="{{ request('building_search') }}">
             <button class="btn btn-primary" type="submit">Search</button>
         </div>
     </form>

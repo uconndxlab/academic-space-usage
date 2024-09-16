@@ -20,14 +20,18 @@
             $table->text('duration_minutes')->nullable();
 --}}
 
-                <dt class="col-sm-3">Subject Code</dt>
-                <dd class="col-sm-9">{{ $course->subject_code }}</dd>
+
 
                 <dt class="col-sm-3">Class Description</dt>
                 <dd class="col-sm-9">{{ $course->class_descr }}</dd>
 
-                <dt class="col-sm-3">Catalog Number</dt>
-                <dd class="col-sm-9">{{ $course->catalog_number }}</dd>
+                <!-- total unique number of rooms (not sections) -->
+                <dt class="col-sm-3">Total Rooms used by this Course</dt>
+                <dd class="col-sm-9">{{ $course->sections->unique('room_id')->count() }}</dd>
+
+                <!-- total number of weekly student contact hours -->
+                <dt class="col-sm-3">Total Weekly Student Contact Hours</dt>
+                <dd class="col-sm-9">{{ $course->sections->sum('day10_enrol') * $course->duration_minutes / 60 }}</dd>
 
                 <dt class="col-sm-3">Max Weekly Schedule Hours</dt>
                 <dd class="col-sm-9">{{ $course->wsch_max }}</dd>

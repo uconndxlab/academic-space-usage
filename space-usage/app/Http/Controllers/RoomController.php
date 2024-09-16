@@ -37,15 +37,24 @@ class RoomController
      */
     public function show($id)
     {
-        $room = Room::find($id);
-        $totalEnrollment = 0;
-        foreach ($room->sections as $section) {
-            $totalEnrollment += $section->enrollment;
-        }
-        
-        $totalSections = count($room->sections);
+        // Retrieve the room and load sections ordered by related course subject_code, catalog_number, and section_number
+        $room = Room::with(['sections' => function($query) {
+            $query->join('courses', 'sections.course_id', '=', 'courses.id')
+                  ->orderBy('courses.subject_code', 'asc')
+                  ->orderBy('courses.catalog_number', 'asc')
+                  ->orderBy('sections.section_number', 'asc') // Order by section_number as well
+                  ->select('sections.*'); // Ensures only section data is returned
+        }])->find($id);
+    
+        // Calculate the total enrollment
+        $totalEnrollment = $room->sections->sum('day10_enrol');
+    
+        // Calculate the total number of sections
+        $totalSections = $room->sections->count();
+    
         return view('rooms.show', compact('room', 'totalEnrollment', 'totalSections'));
     }
+    
 
     /**
      * Show the form for editing the specified resource.

@@ -157,6 +157,7 @@ class Over190Seeder extends Seeder
 
             // Handle Section
             Section::create([
+                'section_number' => $data['Section'],
                 'course_id' => $course->id,
                 'enrol_cap' => $data['Enrl_Cap'],
                 'day10_enrol' => $data['Day10_Enroll'],

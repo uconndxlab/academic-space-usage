@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+@section('title', 'Building Details')
 @section('content')
 <div class="container">
     <h1>{{ $building->description }} ({{ $building->building_code }})</h1>

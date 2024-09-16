@@ -1,5 +1,5 @@
 @extends("layouts.app")
-
+@section("title", "Buildings")
 @section("content")
 <!-- all buildings -->
 

@@ -3,12 +3,12 @@
 
 @section('content')
 <div class="container">
-    <h1 class="mb-4">Section List</h1>
+    <h1 class="mb-4">Course List</h1>
 
     <!-- Table for courses -->
     <div class="card">
         <div class="card-header">
-            <h5 class="card-title">Sections</h5>
+            <h5 class="card-title">Courses</h5>
         </div>
         <div class="card-body">
             <table class="table table-striped">
@@ -17,6 +17,8 @@
                         <th scope="col">Subject Code</th>
                         <th scope="col">Catalog Number</th>
                         <th scope="col">Description</th>
+                        <th scope="col">Total WSCH</th>
+                        <th scope="col">Number of Rooms Used</th>
 
                         <th scope="col">Actions</th>
                     </tr>
@@ -37,6 +39,10 @@
                             </td>
 
                             <td>{{ $course->class_descr }}</td>
+
+                            <td>{{ $course->sections->sum('day10_enrol') * $course->duration_minutes / 60 }}</td>
+
+                            <td>{{ $course->sections->unique('room_id')->count() }}</td>
 
 
                             <td>

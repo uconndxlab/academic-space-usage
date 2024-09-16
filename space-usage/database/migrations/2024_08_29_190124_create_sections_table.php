@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('sections', function (Blueprint $table) {
             $table->id();
+            $table->text('section_number');
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
             $table->integer('enrol_cap');
             $table->text('component_code');

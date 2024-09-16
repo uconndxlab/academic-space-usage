@@ -8,9 +8,10 @@
     <div class="list-group">
         @foreach($rooms as $room)
             <a href="{{ route('rooms.show', $room->id) }}" class="list-group-item list-group-item-action">
-                {{ $room->room_description }} ({{ $room->room_number }})
+                {{ $room->building->description }} {{ $room->room_number }}
             </a>
         @endforeach
+
     </div>
 </div>
 @endsection
