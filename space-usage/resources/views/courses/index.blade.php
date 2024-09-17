@@ -14,12 +14,11 @@
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th scope="col">Subject Code</th>
-                        <th scope="col">Catalog Number</th>
-                        <th scope="col">Description</th>
+                        <th scope="col">Course</th>
                         <th scope="col">Total WSCH</th>
-                        <th scope="col">Number of Rooms Used</th>
-
+                        <th scope="col">Number of Rooms Used (Actual)</th>
+                        <th scope="col">Forecasted WSCH</th>
+                        <th scope="col">Number of Rooms Needed (Caclulated)</th>
                         <th scope="col">Actions</th>
                     </tr>
                 </thead>
@@ -30,19 +29,18 @@
                                
                                     {{ $course->subject_code }}
                                 
-                            </td>
-                            <td>
+
                                     {{ $course->catalog_number }}
                                
                                 
-
-                            </td>
-
-                            <td>{{ $course->class_descr }}</td>
+                            - {{ $course->class_descr }}</td>
 
                             <td>{{ $course->sections->sum('day10_enrol') * $course->duration_minutes / 60 }}</td>
 
                             <td>{{ $course->sections->unique('room_id')->count() }}</td>
+
+                            <td><input type="number" class="form-control" value="{{ $course->wsch_max }}"></td>
+                            <td><input type="number" class="form-control" value="0"></td>
 
 
                             <td>

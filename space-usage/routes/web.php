@@ -24,7 +24,12 @@ Route::get('/buildings/{id}', [BuildingController::class, 'show'])->name('buildi
 
 
 Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+// Show the course details
 Route::get('/course/{id}', [CourseController::class, 'show'])->name('courses.show');
+
+// Handle room simulation
+Route::post('/course/{id}/simulate', [CourseController::class, 'simulateRoomNeeds'])->name('course.simulateRoomNeeds');
+
 
 Route::get('course/{subject_code}/{catalog_number}', [CourseController::class, 'showByCodeAndNumber'])->name('course.byCodeAndNumber');
 

@@ -38,8 +38,29 @@ class CourseController
     public function show($id)
     {
         $course = Course::find($id);
-        return view('courses.show', compact('course'));
+        $currentEnrollment = $course->sections->sum('day10_enrol'); // Example: current enrollment
+    
+        return view('courses.show', compact('course', 'currentEnrollment'));
     }
+    
+    public function simulateRoomNeeds(Request $request, $id)
+    {
+        $course = Course::find($id);
+    
+        // Get inputs from the form
+        $currentEnrollment = $request->input('current_enrollment');
+        $enrollmentIncrease = $request->input('enrollment_increase', 0);
+        $roomCapacity = $request->input('room_capacity');
+    
+        // Calculate the total enrollment based on the percentage increase
+        $simulatedEnrollment = $currentEnrollment + ($currentEnrollment * ($enrollmentIncrease / 100));
+    
+        // Calculate the number of rooms needed
+        $roomsNeeded = ceil($simulatedEnrollment / $roomCapacity);
+    
+        return view('courses.show', compact('course', 'simulatedEnrollment', 'roomsNeeded', 'currentEnrollment', 'roomCapacity'));
+    }
+    
 
     /**
      * Show the form for editing the specified resource.
