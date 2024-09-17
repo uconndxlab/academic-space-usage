@@ -23,6 +23,7 @@
                         <th scope="col">Total WSCH</th>
                         <th scope="col">Number of Rooms Used</th>
                         <th scope="col">Forecasted WSCH</th>
+                        <th scope="col">WSCH Benchmark</th>
                         <th scope="col">Calculated Labs Needed</th>
                         <th scope="col">Actions</th>
                     </tr>
@@ -33,22 +34,11 @@
                             // Total WSCH based on current data
                             $totalWSCH = $course->sections->sum('day10_enrol') * $course->duration_minutes / 60;
 
-                            // Default WSCH benchmark (based on first section's room capacity)
-                            $labSeats = $course->sections->first()->room->capacity ?? 24; // Default to 24 seats if unknown
-                            $wschBenchmark = match($labSeats) {
-                                16 => 360,
-                                20 => 450,
-                                24 => 540,
-                                30 => 670,
-                                54 => 1200,
-                                default => 540, // Default WSCH benchmark
-                            };
-
                             // Unique number of rooms currently used
                             $roomsUsed = $course->sections->unique('room_id')->count();
                         @endphp
 
-                        <tr data-total-wsch="{{ $totalWSCH }}" data-wsch-benchmark="{{ $wschBenchmark }}">
+                        <tr data-total-wsch="{{ $totalWSCH }}">
                             <td>{{ $course->subject_code }} {{ $course->catalog_number }} - {{ $course->class_descr }}</td>
                             <td>{{ $totalWSCH }}</td>
                             <td>{{ $roomsUsed }}</td>
@@ -61,8 +51,19 @@
                                        style="width: 100px;">
                             </td>
 
+                            <!-- WSCH Benchmark switcher -->
+                            <td>
+                                <select class="form-select wsch-benchmark-switcher">
+                                    <option value="360">16 seat lab (360 WSCH)</option>
+                                    <option value="450">20 seat lab (450 WSCH)</option>
+                                    <option value="540" selected>24 seat lab (540 WSCH)</option>
+                                    <option value="670">30 seat lab (670 WSCH)</option>
+                                    <option value="1200">54 seat lab (1200 WSCH)</option>
+                                </select>
+                            </td>
+
                             <!-- Calculated Labs Needed -->
-                            <td class="labs-needed">{{ ceil($totalWSCH * 1.1 / $wschBenchmark) }}</td>
+                            <td class="labs-needed">{{ ceil($totalWSCH * 1.1 / 540) }}</td>
 
                             <td>
                                 <a href="{{ route('courses.show', $course->id) }}" class="btn btn-primary btn-sm">View</a>
@@ -99,13 +100,23 @@
         });
     });
 
+    // Update the labs needed when the WSCH benchmark is changed
+    document.querySelectorAll('.wsch-benchmark-switcher').forEach(function(select) {
+        select.addEventListener('change', function() {
+            var row = this.closest('tr');
+            var input = row.querySelector('.forecasted-wsch-input');
+
+            updateLabsNeeded(input);
+        });
+    });
+
     // Function to calculate and update the labs needed based on WSCH and WSCH benchmark
     function updateLabsNeeded(input) {
         var forecastedWSCH = parseFloat(input.value);
 
         // Find the parent row and WSCH benchmark value
         var row = input.closest('tr');
-        var wschBenchmark = parseFloat(row.dataset.wschBenchmark);
+        var wschBenchmark = parseFloat(row.querySelector('.wsch-benchmark-switcher').value);
         
         // Recalculate labs needed based on the forecasted WSCH value
         var labsNeeded = Math.ceil(forecastedWSCH / wschBenchmark);
@@ -114,5 +125,4 @@
         row.querySelector('.labs-needed').textContent = labsNeeded;
     }
 </script>
-
 @endsection
