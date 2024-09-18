@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+@section('title', 'Course List')
 @section('content')
 <div class="container">
     <h1 class="mb-4">Course List</h1>
@@ -19,15 +19,13 @@
         <!-- Current Information Tab -->
         <div class="tab-pane fade show active" id="current" role="tabpanel" aria-labelledby="current-tab">
             <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="card-title">Current Information</h5>
-                </div>
                 <div class="card-body">
                     <table class="table table-striped">
-                        <thead>
-                            <tr>
+                        <thead style="position: sticky; top: 0;">
+                            <tr class="table-primary">
                                 <th scope="col">Course Name</th>
                                 <th scope="col">Enrollment</th>
+                                <th scope="col">Total Capacity</th>
                                 <th scope="col">Sections</th>
                                 <th scope="col">Rooms</th>
                                 <th scope="col">Total WSCH</th>
@@ -44,17 +42,13 @@
                                     // WSCH Benchmark (based on room size)
                                     $roomCapacity = $course->sections->first()->room->capacity;
 
-                                    if ($roomCapacity == 16) {
-                                        $wschBenchmark = 360;
-                                    } elseif ($roomCapacity == 20) {
-                                        $wschBenchmark = 450;
-                                    } elseif ($roomCapacity == 24) {
-                                        $wschBenchmark = 540;
-                                    } elseif ($roomCapacity == 30) {
-                                        $wschBenchmark = 670;
-                                    } else {
-                                        $wschBenchmark = 1200; // for 54-seat lab
-                                    }
+                                    // calculate WSCH Bechmark like $capacity × 28 hours × 0.80,
+                                    // where 28 hours is the maximum weekly schedule hours and 0.80 is the 80% utilization rate.
+
+                                    $wschBenchmark = $roomCapacity * 28 * 0.80;
+
+                                    // cleanly round the WSCH Benchmark to 0 decimal places
+                                    $wschBenchmark = round($wschBenchmark, 0);
 
                                     // Rooms Needed based on benchmark
                                     $roomsNeeded = ceil($totalWSCH / $wschBenchmark);
@@ -63,6 +57,7 @@
                                 <tr>
                                     <td>{{ $course->subject_code }} {{ $course->catalog_number }}</td>
                                     <td>{{ $course->sections->sum('day10_enrol') }}</td>
+                                    <td>{{ $course->sections->sum('room.capacity') }}</td>
                                     <td>{{ $course->sections->count() }}</td>
                                     <td>{{ $course->sections->unique('room_id')->count() }}</td>
                                     <td>{{ number_format($totalWSCH, 2) }}</td>
@@ -71,9 +66,12 @@
                                 </tr>
                                 <!-- Sub-rows for each room where the course is taught -->
                                 @foreach($course->sections as $section)
+                                    <!-- only show the unique rooms -->
+                                    
+                                    
                                     <tr class="table-secondary">
-                                        <td colspan="">{{ $section->section_number }} {{$section->room->building->building_code}} {{ $section->room->room_number }} - {{ $section->room->capacity }} seats</td>
-                                        <td colspan="3">{{ $section->day10_enrol }}</td>
+                                        <td colspan="">{{$section->room->building->building_code}} {{ $section->room->room_number }} - {{ $section->section_number }} </td>
+                                        <td colspan="3">{{ $section->day10_enrol }} / {{ $section->room->capacity }} </td>
                                         <td colspan="5">{{ number_format($section->day10_enrol * $course->duration_minutes / 60, 2) }}</td>
                                     </tr>
                                 @endforeach
@@ -87,9 +85,6 @@
         <!-- Forecast Tools Tab -->
         <div class="tab-pane fade" id="forecast" role="tabpanel" aria-labelledby="forecast-tab">
             <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="card-title">Forecast Tools</h5>
-                </div>
                 <div class="card-body">
                     <!-- Global Controls for Enrollment Increase -->
                     <div class="mb-4">
