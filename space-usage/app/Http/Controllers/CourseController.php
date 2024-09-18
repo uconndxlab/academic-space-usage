@@ -12,7 +12,8 @@ class CourseController
      */
     public function index()
     {
-        $courses = Course::all()->sortBy('subject_code');
+        // order asc
+        $courses = Course::all()->sortBy('catalog_number')->sortBy('subject_code');
         return view('courses.index', compact('courses'));
     }
 

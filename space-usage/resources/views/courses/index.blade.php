@@ -4,125 +4,176 @@
 <div class="container">
     <h1 class="mb-4">Course List</h1>
 
-    <!-- Controls for global simulation -->
-    <div class="mb-4">
-        <label for="enrollmentIncrease" class="form-label">Enrollment Increase (%)</label>
-        <input type="number" id="enrollmentIncrease" class="form-control" value="10">
-    </div>
+    <!-- Tabs navigation -->
+    <ul class="nav nav-tabs" id="courseTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="current-tab" data-bs-toggle="tab" data-bs-target="#current" type="button" role="tab" aria-controls="current" aria-selected="true">Current Information</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="forecast-tab" data-bs-toggle="tab" data-bs-target="#forecast" type="button" role="tab" aria-controls="forecast" aria-selected="false">Forecast Tools</button>
+        </li>
+    </ul>
 
-    <!-- Table for courses -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="card-title">Courses</h5>
+    <!-- Tabs content -->
+    <div class="tab-content" id="courseTabsContent">
+        <!-- Current Information Tab -->
+        <div class="tab-pane fade show active" id="current" role="tabpanel" aria-labelledby="current-tab">
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title">Current Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th scope="col">Course Name</th>
+                                <th scope="col">Enrollment</th>
+                                <th scope="col">Sections</th>
+                                <th scope="col">Rooms</th>
+                                <th scope="col">Total WSCH</th>
+                                <th scope="col">WSCH Benchmark</th>
+                                <th scope="col">Rooms Needed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($courses as $course)
+                                @php
+                                    // Current WSCH calculation
+                                    $totalWSCH = $course->sections->sum('day10_enrol') * $course->duration_minutes / 60;
+
+                                    // WSCH Benchmark (based on room size)
+                                    $roomCapacity = $course->sections->first()->room->capacity;
+
+                                    if ($roomCapacity == 16) {
+                                        $wschBenchmark = 360;
+                                    } elseif ($roomCapacity == 20) {
+                                        $wschBenchmark = 450;
+                                    } elseif ($roomCapacity == 24) {
+                                        $wschBenchmark = 540;
+                                    } elseif ($roomCapacity == 30) {
+                                        $wschBenchmark = 670;
+                                    } else {
+                                        $wschBenchmark = 1200; // for 54-seat lab
+                                    }
+
+                                    // Rooms Needed based on benchmark
+                                    $roomsNeeded = ceil($totalWSCH / $wschBenchmark);
+                                @endphp
+
+                                <tr>
+                                    <td>{{ $course->subject_code }} {{ $course->catalog_number }}</td>
+                                    <td>{{ $course->sections->sum('day10_enrol') }}</td>
+                                    <td>{{ $course->sections->count() }}</td>
+                                    <td>{{ $course->sections->unique('room_id')->count() }}</td>
+                                    <td>{{ number_format($totalWSCH, 2) }}</td>
+                                    <td>{{ number_format($wschBenchmark, 2) }}</td>
+                                    <td>{{ $roomsNeeded }}</td>
+                                </tr>
+                                <!-- Sub-rows for each room where the course is taught -->
+                                @foreach($course->sections as $section)
+                                    <tr class="table-secondary">
+                                        <td colspan="">{{ $section->section_number }} {{$section->room->building->building_code}} {{ $section->room->room_number }} - {{ $section->room->capacity }} seats</td>
+                                        <td colspan="3">{{ $section->day10_enrol }}</td>
+                                        <td colspan="5">{{ number_format($section->day10_enrol * $course->duration_minutes / 60, 2) }}</td>
+                                    </tr>
+                                @endforeach
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th scope="col">Course</th>
-                        <th scope="col">Total WSCH</th>
-                        <th scope="col">Number of Rooms Used</th>
-                        <th scope="col">Forecasted WSCH</th>
-                        <th scope="col">WSCH Benchmark</th>
-                        <th scope="col">Calculated Labs Needed</th>
-                        <th scope="col">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($courses as $course)
-                        @php
-                            // Total WSCH based on current data
-                            $totalWSCH = $course->sections->sum('day10_enrol') * $course->duration_minutes / 60;
 
-                            // Unique number of rooms currently used
-                            $roomsUsed = $course->sections->unique('room_id')->count();
-                        @endphp
+        <!-- Forecast Tools Tab -->
+        <div class="tab-pane fade" id="forecast" role="tabpanel" aria-labelledby="forecast-tab">
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title">Forecast Tools</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Global Controls for Enrollment Increase -->
+                    <div class="mb-4">
+                        <label for="enrollmentIncrease" class="form-label">Enrollment Increase (%)</label>
+                        <input type="number" id="enrollmentIncrease" class="form-control" value="10">
+                    </div>
 
-                        <tr data-total-wsch="{{ $totalWSCH }}">
-                            <td>{{ $course->subject_code }} {{ $course->catalog_number }} - {{ $course->class_descr }}</td>
-                            <td>{{ $totalWSCH }}</td>
-                            <td>{{ $roomsUsed }}</td>
+                    <!-- Forecast Table -->
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th scope="col">Course Name</th>
+                                <th scope="col">Students (Input)</th>
+                                <th scope="col">WSCH (Input)</th>
+                                <th scope="col">WSCH Benchmark</th>
+                                <th scope="col">Rooms Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($courses as $course)
+                                @php
+                                    // WSCH calculation based on inputs
+                                    $totalWSCH = $course->sections->sum('day10_enrol') * $course->duration_minutes / 60;
+                                @endphp
 
-                            <!-- Forecasted WSCH as an input field -->
-                            <td>
-                                <input type="number" class="form-control forecasted-wsch-input" 
-                                       value="{{ $totalWSCH * 1.1 }}" 
-                                       data-original-wsch="{{ $totalWSCH }}"
-                                       style="width: 100px;">
-                            </td>
+                                <tr>
+                                    <td>{{ $course->subject_code }} {{ $course->catalog_number }}</td>
+                                    <td>
+                                        <input type="number" class="form-control forecast-students-input" 
+                                               value="{{ $course->sections->sum('day10_enrol') }}" 
+                                               data-original-enrollment="{{ $course->sections->sum('day10_enrol') }}">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control forecast-wsch-input" 
+                                               value="{{ number_format($totalWSCH, 2) }}" 
+                                               data-original-wsch="{{ $totalWSCH }}">
+                                    </td>
+                                    <td class="wsch-benchmark">{{ number_format($wschBenchmark, 2) }}</td>
+                                    <td class="forecast-rooms-required">{{ ceil($totalWSCH / $wschBenchmark) }}</td>
+                                </tr>
 
-                            <!-- WSCH Benchmark switcher -->
-                            <td>
-                                <select class="form-select wsch-benchmark-switcher">
-                                    <option value="360">16 seat lab (360 WSCH)</option>
-                                    <option value="450">20 seat lab (450 WSCH)</option>
-                                    <option value="540" selected>24 seat lab (540 WSCH)</option>
-                                    <option value="670">30 seat lab (670 WSCH)</option>
-                                    <option value="1200">54 seat lab (1200 WSCH)</option>
-                                </select>
-                            </td>
-
-                            <!-- Calculated Labs Needed -->
-                            <td class="labs-needed">{{ ceil($totalWSCH * 1.1 / 540) }}</td>
-
-                            <td>
-                                <a href="{{ route('courses.show', $course->id) }}" class="btn btn-primary btn-sm">View</a>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                                <!-- Sub-rows for rooms used -->
+                                @foreach($course->sections as $section)
+                                    <tr>
+                                        <td colspan="5">Room: {{ $section->room->name }} - Capacity: {{ $section->room->capacity }}</td>
+                                    </tr>
+                                @endforeach
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Update the forecasted WSCH globally when enrollment increase is changed
-    document.getElementById('enrollmentIncrease').addEventListener('input', function() {
-        var increasePercentage = parseFloat(this.value) / 100;
-        
-        document.querySelectorAll('.forecasted-wsch-input').forEach(function(input) {
-            var originalWSCH = parseFloat(input.dataset.originalWsch);
-            var newWSCH = originalWSCH * (1 + increasePercentage);
-
-            // Update the input field with the new forecasted WSCH
-            input.value = newWSCH.toFixed(2);
-
-            // Recalculate labs needed
-            updateLabsNeeded(input);
-        });
-    });
-
-    // Update the calculated labs when forecasted WSCH is manually changed for a single course
-    document.querySelectorAll('.forecasted-wsch-input').forEach(function(input) {
+    // Add JavaScript to handle forecast recalculations when enrollment or WSCH inputs change.
+    document.querySelectorAll('.forecast-students-input, .forecast-wsch-input').forEach(function(input) {
         input.addEventListener('input', function() {
-            updateLabsNeeded(this);
-        });
-    });
-
-    // Update the labs needed when the WSCH benchmark is changed
-    document.querySelectorAll('.wsch-benchmark-switcher').forEach(function(select) {
-        select.addEventListener('change', function() {
             var row = this.closest('tr');
-            var input = row.querySelector('.forecasted-wsch-input');
+            var students = parseFloat(row.querySelector('.forecast-students-input').value);
+            var wsch = parseFloat(row.querySelector('.forecast-wsch-input').value);
 
-            updateLabsNeeded(input);
+            // Use the original room capacity to determine the WSCH benchmark
+            var roomCapacity = row.querySelector('.forecast-students-input').dataset.roomCapacity;
+
+            var benchmark;
+            if (roomCapacity == 16) {
+                benchmark = 360;
+            } else if (roomCapacity == 20) {
+                benchmark = 450;
+            } else if (roomCapacity == 24) {
+                benchmark = 540;
+            } else if (roomCapacity == 30) {
+                benchmark = 670;
+            } else {
+                benchmark = 1200; // for 54-seat lab
+            }
+
+            row.querySelector('.wsch-benchmark').textContent = benchmark.toFixed(2);
+            var roomsRequired = Math.ceil(wsch / benchmark);
+            row.querySelector('.forecast-rooms-required').textContent = roomsRequired;
         });
     });
-
-    // Function to calculate and update the labs needed based on WSCH and WSCH benchmark
-    function updateLabsNeeded(input) {
-        var forecastedWSCH = parseFloat(input.value);
-
-        // Find the parent row and WSCH benchmark value
-        var row = input.closest('tr');
-        var wschBenchmark = parseFloat(row.querySelector('.wsch-benchmark-switcher').value);
-        
-        // Recalculate labs needed based on the forecasted WSCH value
-        var labsNeeded = Math.ceil(forecastedWSCH / wschBenchmark);
-
-        // Update the labs needed column in the row
-        row.querySelector('.labs-needed').textContent = labsNeeded;
-    }
 </script>
 @endsection
