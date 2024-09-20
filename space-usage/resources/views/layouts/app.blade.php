@@ -13,7 +13,19 @@
         .table-responsive {
             margin-top: 20px;
         }
+
+        tr.table-secondary {
+            font-size: 0.9em;
+        }
+
+        tr.table-course {
+            cursor: pointer;
+        }
+ 
     </style>
+
+    <script src="https://unpkg.com/htmx.org@2.0.2" integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ" crossorigin="anonymous"></script>
+
 </head>
 <body>
     <!-- bootstrap nav for rooms, buildings, and courses -->
@@ -46,5 +58,9 @@
     
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+
+    
 </body>
 </html>
