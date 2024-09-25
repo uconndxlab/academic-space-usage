@@ -21,6 +21,30 @@
         tr.table-course {
             cursor: pointer;
         }
+
+        tr.table-course:hover {
+            background-color: #f8f9fa;
+        }
+
+        .room-enrollment {
+            cursor: pointer;
+        }
+
+        .room-enrollment:hover {
+            text-decoration: underline;
+        }
+
+        .card-title {
+            font-size: 1.2em;
+        }
+
+        .card-text {
+            font-size: 1em;
+        }
+
+        .card {
+            height: 100%;
+        }
  
     </style>
 

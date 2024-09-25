@@ -130,7 +130,7 @@
                                     <th scope="col">Course Name</th>
                                     <th scope="col">Students Enrolled (Input)</th>
                                     <th scope="col">Existing No of Labs</th>
-                                    <th scope="col">Weekly Contact Hours per Student</th>
+                                    <th scope="col">Weekly Contact Hours</th>
                                     <th scope="col">WSCH (Calculated)</th>
                                     <th scope="col">Room Capacity</th>
                                     <th scope="col">WSCH Benchmark</th>
@@ -192,8 +192,15 @@
             
                     // Recalculate delta
                     let existingLabs = parseInt(row.querySelector('td:nth-child(3)').textContent);
-                    let delta = labsNeeded - existingLabs;
+                    let delta =  existingLabs - labsNeeded;
                     row.querySelector('.forecast-delta').textContent = delta;
+
+                    // Highlight the row if delta is negative by apply class bg-danger
+                    if (delta < 0) {
+                        row.querySelector('.forecast-delta').classList.add('bg-danger');
+                    } else {
+                        row.querySelector('.forecast-delta').classList.remove('bg-danger');
+                    }
                 }
             
                 document.getElementById('enrollmentIncrease').addEventListener('input', function () {
@@ -218,6 +225,29 @@
                         recalculateForRow(row);
                     });
                 });
+
+
+                // for any .table-secondary that has a data-course attribute, hide it until the parent row is clicked
+                document.querySelectorAll('.table-secondary').forEach(function (row) {
+                    if(row.dataset.course) {
+                        row.style.display = 'none';
+                    }
+                });
+
+                // add click event listener to each .table-course row
+                document.querySelectorAll('.table-course').forEach(function (row) {
+                    row.addEventListener('click', function () {
+                        let courseId = this.id.split('-')[1];
+                        let courseRows = document.querySelectorAll(`.table-secondary[data-course="course-${courseId}"]`);
+                        courseRows.forEach(function (row) {
+                            row.style.display = row.style.display === 'none' ? '' : 'none';
+                        });
+                    });
+                });
+
+                
+
+
             </script>
         </div>
     </div>
