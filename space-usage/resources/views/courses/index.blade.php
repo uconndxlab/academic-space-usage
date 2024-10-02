@@ -27,13 +27,11 @@
                         type="button" role="tab" aria-controls="current" aria-selected="true">Current
                         Information</button>
                 </li>
-                @if (request('department'))
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="forecast-tab" data-bs-toggle="tab" data-bs-target="#forecast"
                             type="button" role="tab" aria-controls="forecast" aria-selected="false">Forecast
                             Tools</button>
                     </li>
-                @endif
             </ul>
 
             <!-- Tabs content -->
@@ -53,6 +51,7 @@
                                         <th scope="col">Total WSCH</th>
                                         <th scope="col">WSCH Benchmark</th>
                                         <th scope="col">Rooms Needed</th>
+                                        <th scope="col">Delta</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -71,18 +70,25 @@
                                             $wschBenchmark = round(28 * ($roomCapacity * 0.8), -1); // Benchmark rounded up
 
                                             // Rooms Needed based on benchmark
-                                            $roomsNeeded = ceil($totalWSCH / $wschBenchmark);
+                                            $roomsNeeded = ceil($totalWSCH / $wschBenchmark * 10) / 10;
+
+                                            $delta =  $course->sections->unique('room_id')->count() - $roomsNeeded;
                                         @endphp
 
                                         <tr class="table-course" id="course-{{ $course->id }}">
-                                            <td>{{ $course->subject_code }} {{ $course->catalog_number }}</td>
+                                            <td>
+                                                <a href="{{ route('courses.show', $course->id) }}">
+                                                {{ $course->subject_code }} {{ $course->catalog_number }}
+                                            </a>
+                                            </td>
                                             <td>{{ $course->sections->sum('day10_enrol') }}</td>
                                             <td>{{ $course->sections->sum('room.capacity') }}</td>
                                             <td>{{ $course->sections->count() }}</td>
                                             <td>{{ $course->sections->unique('room_id')->count() }}</td>
-                                            <td>{{ number_format($totalWSCH, 2) }}</td>
-                                            <td>{{ number_format($wschBenchmark, 2) }}</td>
+                                            <td>{{ $totalWSCH }}</td>
+                                            <td>{{ $wschBenchmark }}</td>
                                             <td>{{ $roomsNeeded }}</td>
+                                            <td class="{{ $delta < 0 ? 'bg-danger' : '' }}">{{ $delta }}</td>
                                         </tr>
                                         <!-- Sub-rows for each room where the course is taught -->
                                         @foreach ($course->sections->sortBy('section_number') as $section)
@@ -144,7 +150,7 @@
                                         // Initial calculations
                                         $totalEnrollment = $course->sections->sum('day10_enrol');
                                         $weeklyContactHours = round($course->duration_minutes / 60, 2); // assuming duration is in minutes
-                                        $totalWSCH = $totalEnrollment * $weeklyContactHours;
+                                        $totalWSCH = ceil($totalEnrollment * $weeklyContactHours);
                                         $roomCapacity = $course->sections->first()->room->capacity;
                                         $wschBenchmark = round(28 * ($roomCapacity * 0.80), -1); // Benchmark rounded up
                                         $existingLabs = $course->sections->unique('room_id')->count();
@@ -153,7 +159,11 @@
                                     @endphp
             
                                     <tr class="course-row">
-                                        <td>{{ $course->subject_code }} {{ $course->catalog_number }}</td>
+                                        <td>
+                                           <a href="{{ route('courses.show', $course->id) }}">
+                                                {{ $course->subject_code }} {{ $course->catalog_number }}
+                                            </a>
+                                        </td>
                                         <td>
                                             <input type="number" class="form-control forecast-students-input"
                                                    value="{{ $totalEnrollment }}"
@@ -162,11 +172,13 @@
                                         </td>
                                         <td>{{ $existingLabs }}</td>
                                         <td>{{ $weeklyContactHours }}</td>
-                                        <td class="forecast-wsch">{{ number_format($totalWSCH, 2) }}</td>
+                                        <td class="forecast-wsch">{{ $totalWSCH }}</td>
                                         <td>{{ $roomCapacity }}</td>
-                                        <td class="wsch-benchmark">{{ number_format($wschBenchmark, 2) }}</td>
+                                        <td class="wsch-benchmark">{{ $wschBenchmark }}</td>
                                         <td class="forecast-labs-needed">{{ $labsNeeded }}</td>
-                                        <td class="forecast-delta">{{ $delta }}</td>
+                                        <td class="forecast-delta {{ $delta < 0 ? 'bg-danger' : '' }}">
+                                            {{ $delta }}
+                                        </td>
                                     </tr>
             
                                 @endforeach

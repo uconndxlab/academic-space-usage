@@ -94,7 +94,7 @@
                         @php
                            // $room->capacity needs to be an integer
                             $room->capacity = (int) $room->capacity;
-                            $wsch_benchmark = $room->capacity * 45;
+                            $wschBenchmark = round(28 * ($roomCapacity * 0.8), -1); // Benchmark rounded up
 
                             $contact_hours_total = 0;
                             foreach ($room->sections as $section) {
@@ -111,9 +111,9 @@
                                     <p class="card-text">Capacity: {{ $room->capacity }}</p>
                                     <p class="card-text">Sections: {{ $room->sections->count() }}</p>
                                     <p class="card-text">Enrollment: {{ $room->sections->sum('day10_enrol') }}</p>
-                                    <p class="card-text">WSCH: {{ $wsch_benchmark}}</p>
+                                    <p class="card-text">WSCH: {{ $wschBenchmark}}</p>
                                     <p class="card-text">Contact Hours: {{ $contact_hours_total }}</p>
-                                    <p class="card-text">Utilization: {{ number_format(($contact_hours_total / $wsch_benchmark) * 100, 2) }}%</p>
+                                    <p class="card-text">Utilization: {{ number_format(($contact_hours_total / $wschBenchmark) * 100, 2) }}%</p>
                                     <a href="{{ route('rooms.show', $room->id) }}" class="btn btn-primary">View Room</a>
 
                                 </div>
