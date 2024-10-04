@@ -19,7 +19,8 @@
             $table->text('class_duration_weekly')->nullable();
             $table->text('duration_minutes')->nullable();
 --}}
-
+            
+                <?php $course_duration_nearest_hour = ceil($course->duration_minutes / 60); ?>
 
 
                 <dt class="col-sm-3">Class Description</dt>
@@ -31,7 +32,7 @@
 
                 <!-- total number of weekly student contact hours -->
                 <dt class="col-sm-3">Total Weekly Student Contact Hours</dt>
-                <dd class="col-sm-9">{{ $course->sections->sum('day10_enrol') * $course->duration_minutes / 60 }}</dd>
+                <dd class="col-sm-9">{{ ceil($course->sections->sum('day10_enrol') * $course_duration_nearest_hour) }}</dd>
 
                 <dt class="col-sm-3">Max Weekly Schedule Hours</dt>
                 <dd class="col-sm-9">{{ $course->wsch_max }}</dd>

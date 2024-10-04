@@ -82,7 +82,7 @@
                                             <td>{{ $course->sections->sum('day10_enrol') }}</td>
                                             <td>{{ $course->sections->sum('room.capacity') }}</td>
                                             <td>
-                                                <a href="#">
+                                                <a href="javascript:void(0);">
                                                 {{ $course->sections->count() }}
                                             </a>
 
