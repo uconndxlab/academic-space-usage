@@ -6,15 +6,6 @@
         <h2>Term: Fall 2023</h2>
         <h3>10th Day Enrollments</h3>
 
-        <!-- Enrollment Increase Input -->
-        <div class="row my-4">
-            <div class="col-md-6">
-                <label for="enrollmentIncrease" class="form-label">Simulate Enrollment Increase (%)</label>
-                <input type="number" id="enrollmentIncrease" class="form-control" value="0" min="0" max="100"
-                    step="1">
-            </div>
-        </div>
-
         <div class="row my-4">
             <!-- Total Rooms -->
             <div class="col-md-3">
@@ -109,12 +100,25 @@
                             <div class="card">
                                 <div class="card-body">
                                     <h5 class="card-title">{{ $room->room_description }} ({{ $room->room_number }})</h5>
-                                    <p class="card-text">Capacity: {{ $room->capacity }}</p>
-                                    <p class="card-text">Sections: {{ $room->sections->count() }}</p>
-                                    <p class="card-text">Enrollment: {{ $room->sections->sum('day10_enrol') }}</p>
-                                    <p class="card-text">WSCH: {{ $wschBenchmark}}</p>
-                                    <p class="card-text">Contact Hours: {{ $contact_hours_total }}</p>
-                                    <p class="card-text">Utilization: {{ number_format(($contact_hours_total / $wschBenchmark) * 100, 0) }}%</p>
+                                    <dl class="row">
+                                        <dt class="col-sm-4">Capacity:</dt>
+                                        <dd class="col-sm-8">{{ $room->capacity }}</dd>
+
+                                        <dt class="col-sm-4">Sections:</dt>
+                                        <dd class="col-sm-8">{{ $room->sections->count() }}</dd>
+
+                                        <dt class="col-sm-4">Enrollment:</dt>
+                                        <dd class="col-sm-8">{{ $room->sections->sum('day10_enrol') }}</dd>
+
+                                        <dt class="col-sm-4">WSCH Benchmark:</dt>
+                                        <dd class="col-sm-8">{{ $wschBenchmark }}</dd>
+
+                                        <dt class="col-sm-4">WSCH:</dt>
+                                        <dd class="col-sm-8">{{ $contact_hours_total }}</dd>
+
+                                        <dt class="col-sm-4">Utilization:</dt>
+                                        <dd class="col-sm-8">{{ number_format(($contact_hours_total / $wschBenchmark) * 100, 0) }}%</dd>
+                                    </dl>
                                     <a href="{{ route('rooms.show', $room->id) }}" class="btn btn-primary">View Room</a>
 
                                 </div>

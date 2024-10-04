@@ -40,7 +40,7 @@
                 <div class="tab-pane fade show active" id="current" role="tabpanel" aria-labelledby="current-tab">
                     <div class="card mt-4">
                         <div class="card-body">
-                            <table class="table table-striped">
+                            <table class="table">
                                 <thead style="position: sticky; top: 0;">
                                     <tr class="table-primary">
                                         <th scope="col">Course Name</th>
@@ -58,9 +58,7 @@
                                     @foreach ($courses as $course)
                                         @php
                                             // Current WSCH calculation
-                                            $totalWSCH =
-                                                ($course->sections->sum('day10_enrol') * $course->duration_minutes) /
-                                                60;
+                                            $totalWSCH = ceil(($course->sections->sum('day10_enrol') * $course->duration_minutes) / 60);
 
                                             // WSCH Benchmark (based on room size)
                                             $roomCapacity = $course->sections->first()->room->capacity;
@@ -70,7 +68,7 @@
                                             $wschBenchmark = round(28 * ($roomCapacity * 0.8), -1); // Benchmark rounded up
 
                                             // Rooms Needed based on benchmark
-                                            $roomsNeeded = ceil($totalWSCH / $wschBenchmark * 10) / 10;
+                                            $roomsNeeded = round($totalWSCH / $wschBenchmark, 2);
 
                                             $delta =  $course->sections->unique('room_id')->count() - $roomsNeeded;
                                         @endphp
@@ -83,7 +81,12 @@
                                             </td>
                                             <td>{{ $course->sections->sum('day10_enrol') }}</td>
                                             <td>{{ $course->sections->sum('room.capacity') }}</td>
-                                            <td>{{ $course->sections->count() }}</td>
+                                            <td>
+                                                <a href="#">
+                                                {{ $course->sections->count() }}
+                                            </a>
+
+                                            </td>
                                             <td>{{ $course->sections->unique('room_id')->count() }}</td>
                                             <td>{{ $totalWSCH }}</td>
                                             <td>{{ $wschBenchmark }}</td>
@@ -154,8 +157,9 @@
                                         $roomCapacity = $course->sections->first()->room->capacity;
                                         $wschBenchmark = round(28 * ($roomCapacity * 0.80), -1); // Benchmark rounded up
                                         $existingLabs = $course->sections->unique('room_id')->count();
-                                        $labsNeeded = ceil($totalWSCH / $wschBenchmark);
-                                        $delta = $labsNeeded - $existingLabs;
+                                        $labsNeeded = round($totalWSCH / $wschBenchmark, 2);
+
+                                        $delta =  $existingLabs - $labsNeeded;
                                     @endphp
             
                                     <tr class="course-row">

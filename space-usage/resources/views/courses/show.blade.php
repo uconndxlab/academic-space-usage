@@ -39,8 +39,8 @@
                 <dt class="col-sm-3">Class Duration Weekly</dt>
                 <dd class="col-sm-9">{{ $course->class_duration_weekly }}</dd>
 
-                <dt class="col-sm-3">Duration Minutes</dt>
-                <dd class="col-sm-9">{{ $course->duration_minutes }}</dd>
+                {{-- <dt class="col-sm-3">Duration Minutes</dt>
+                <dd class="col-sm-9">{{ $course->duration_minutes }}</dd> --}}
 
                 <dt class="col-sm-3">% Full</dt>
                 <dd class="col-sm-9">{{ number_format(($course->sections->sum('day10_enrol') / $course->sections->sum('room.capacity')) * 100, 2) }}%</dd>
