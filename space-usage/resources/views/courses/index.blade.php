@@ -82,7 +82,9 @@
                                             <td>{{ $course->sections->sum('day10_enrol') }}</td>
                                             <td>{{ $course->sections->sum('room.capacity') }}</td>
                                             <td>
-                                                <a href="javascript:void(0);">
+                                                <a
+                                                 class="sections-count"
+                                                 href="javascript:void(0);">
                                                 {{ $course->sections->count() }}
                                             </a>
 
@@ -210,8 +212,8 @@
                     let existingLabs = parseInt(row.querySelector('td:nth-child(3)').textContent);
                     let delta = (existingLabs - labsNeeded).toFixed(2);
                     row.querySelector('.forecast-delta').textContent = delta;
-
-                    // Highlight the row if delta is negative by apply class bg-danger
+            
+                    // Highlight the row if delta is negative by applying class bg-danger
                     if (delta < 0) {
                         row.querySelector('.forecast-delta').classList.add('bg-danger');
                     } else {
@@ -241,30 +243,28 @@
                         recalculateForRow(row);
                     });
                 });
-
-
-                // for any .table-secondary that has a data-course attribute, hide it until the parent row is clicked
+            
+                // For any .table-secondary that has a data-course attribute, hide it until the sections count link is clicked
                 document.querySelectorAll('.table-secondary').forEach(function (row) {
-                    if(row.dataset.course) {
+                    if (row.dataset.course) {
                         row.style.display = 'none';
                     }
                 });
-
-                // add click event listener to each .table-course row
-                document.querySelectorAll('.table-course').forEach(function (row) {
-                    row.addEventListener('click', function () {
-                        let courseId = this.id.split('-')[1];
+            
+                // Add click event listener to each .sections-count link
+                document.querySelectorAll('.sections-count').forEach(function (link) {
+                    link.addEventListener('click', function (event) {
+                        event.preventDefault(); // Prevent default link behavior
+                        let courseRow  = this.closest('tr');
+                        let courseId = courseRow.id.split('-')[1];
                         let courseRows = document.querySelectorAll(`.table-secondary[data-course="course-${courseId}"]`);
                         courseRows.forEach(function (row) {
                             row.style.display = row.style.display === 'none' ? '' : 'none';
                         });
                     });
                 });
-
-                
-
-
             </script>
+            
         </div>
     </div>
 

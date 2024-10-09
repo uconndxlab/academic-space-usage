@@ -51,7 +51,7 @@
     <script src="https://unpkg.com/htmx.org@2.0.2" integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ" crossorigin="anonymous"></script>
 
 </head>
-<body>
+<body data-bs-theme="dark">
     <!-- bootstrap nav for rooms, buildings, and courses -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
