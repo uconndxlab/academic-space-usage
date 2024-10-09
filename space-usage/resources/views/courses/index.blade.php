@@ -203,12 +203,12 @@
             
                     // Recalculate labs needed
                     let wschBenchmark = parseFloat(row.querySelector('.wsch-benchmark').textContent);
-                    let labsNeeded = Math.ceil(newWSCH / wschBenchmark);
+                    let labsNeeded = (newWSCH / wschBenchmark).toFixed(2);
                     row.querySelector('.forecast-labs-needed').textContent = labsNeeded;
             
                     // Recalculate delta
                     let existingLabs = parseInt(row.querySelector('td:nth-child(3)').textContent);
-                    let delta =  existingLabs - labsNeeded;
+                    let delta = (existingLabs - labsNeeded).toFixed(2);
                     row.querySelector('.forecast-delta').textContent = delta;
 
                     // Highlight the row if delta is negative by apply class bg-danger
