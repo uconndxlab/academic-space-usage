@@ -71,6 +71,9 @@
                                             $roomsNeeded = round($totalWSCH / $wschBenchmark, 2);
 
                                             $delta =  $course->sections->unique('room_id')->count() - $roomsNeeded;
+
+                                            // $totalCapacity is the sum of unique room capacities
+                                            $totalCapacity = $course->sections->unique('room_id')->sum('room.capacity');
                                         @endphp
 
                                         <tr class="table-course" id="course-{{ $course->id }}">
@@ -80,7 +83,7 @@
                                             </a>
                                             </td>
                                             <td>{{ $course->sections->sum('day10_enrol') }}</td>
-                                            <td>{{ $course->sections->sum('room.capacity') }}</td>
+                                            <td>{{ $totalCapacity }}</td>
                                             <td>
                                                 <a
                                                  class="sections-count"
