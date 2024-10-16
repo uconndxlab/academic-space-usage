@@ -45,9 +45,11 @@
                                     <tr class="table-primary">
                                         <th scope="col">Course Name</th>
                                         <th scope="col">Enrollment</th>
-                                        <th scope="col">Total Capacity</th>
+                                       
                                         <th scope="col">Sections</th>
+                                        
                                         <th scope="col">Rooms</th>
+                                        <th scope="col">Capacity (combined)</th>
                                         <th scope="col">Total WSCH</th>
                                         <th scope="col">WSCH Benchmark</th>
                                         <th scope="col">Rooms Needed</th>
@@ -83,7 +85,6 @@
                                             </a>
                                             </td>
                                             <td>{{ $course->sections->sum('day10_enrol') }}</td>
-                                            <td>{{ $totalCapacity }}</td>
                                             <td>
                                                 <a
                                                  class="sections-count"
@@ -93,6 +94,8 @@
 
                                             </td>
                                             <td>{{ $course->sections->unique('room_id')->count() }}</td>
+                                            <td>{{ $totalCapacity }}</td>
+
                                             <td>{{ $totalWSCH }}</td>
                                             <td>{{ $wschBenchmark }}</td>
                                             <td>{{ $roomsNeeded }}</td>
@@ -157,7 +160,12 @@
                                     @php
                                         // Initial calculations
                                         $totalEnrollment = $course->sections->sum('day10_enrol');
+
                                         $weeklyContactHours = round($course->duration_minutes / 60, 2); // assuming duration is in minutes
+                                        // round to nearest half hour
+                                        $weeklyContactHours = round($weeklyContactHours * 2) / 2;
+
+
                                         $totalWSCH = ceil($totalEnrollment * $weeklyContactHours);
                                         $roomCapacity = $course->sections->first()->room->capacity;
                                         $wschBenchmark = round(28 * ($roomCapacity * 0.80), -1); // Benchmark rounded up
