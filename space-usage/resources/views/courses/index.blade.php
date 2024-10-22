@@ -40,7 +40,7 @@
                 <div class="tab-pane fade show active" id="current" role="tabpanel" aria-labelledby="current-tab">
                     <div class="card mt-4">
                         <div class="card-body">
-                            <table class="table">
+                            <table class="table table-hover">
                                 <thead style="position: sticky; top: 0;">
                                     <tr class="table-primary">
                                         <th scope="col">Course Name</th>
@@ -53,7 +53,11 @@
                                         <th scope="col">Total WSCH</th>
                                         <th scope="col">WSCH Benchmark</th>
                                         <th scope="col">Rooms Needed</th>
-                                        <th scope="col">Delta</th>
+                                        <th scope="col" data-sort="delta" style="cursor: pointer;">
+                                           
+                                                Delta
+                                            
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -107,7 +111,7 @@
 
 
                                             <tr class="table-secondary" data-course="course-{{ $course->id }}">
-                                                <td colspan="">{{ $section->room->building->building_code }}
+                                                <td colspan="1">{{ $section->room->building->building_code }}
                                                     {{ $section->room->room_number }} - {{ $section->section_number }}
                                                 </td>
                                                 <td colspan="4">{{ $section->day10_enrol }} /
@@ -120,7 +124,7 @@
                                                     $roomCapacity = $section->room->capacity;
                                                     $wschBenchmark = $roomCapacity * 28 * 0.8;
                                                 @endphp
-                                                <td colspan="5">{{ number_format($wschBenchmark, 2) }}</td>
+                                                <td colspan="3">{{ number_format($wschBenchmark, 2) }}</td>
                                             </tr>
                                         @endforeach
                                     @endforeach
@@ -141,7 +145,7 @@
                         </div>
             
                         <!-- Forecast Table -->
-                        <table class="table table-striped">
+                        <table class="table table-striped table-hover">
                             <thead style="position: sticky; top: 0;">
                                 <tr class="table-primary">
                                     <th scope="col">Course Name</th>
@@ -152,7 +156,7 @@
                                     <th scope="col">Room Capacity</th>
                                     <th scope="col">WSCH Benchmark</th>
                                     <th scope="col">Labs Needed (Calculated)</th>
-                                    <th scope="col">Delta</th>
+                                    <th scope="col" data-sort="delta" style="cursor:pointer;">Delta</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -175,7 +179,7 @@
                                         $delta =  $existingLabs - $labsNeeded;
                                     @endphp
             
-                                    <tr class="course-row">
+                                    <tr class="course-row table-course">
                                         <td>
                                            <a href="{{ route('courses.show', $course->id) }}">
                                                 {{ $course->subject_code }} {{ $course->catalog_number }}
@@ -274,7 +278,57 @@
                         });
                     });
                 });
+
             </script>
+
+<script>
+    // Function to sort the table rows based on column data
+    function sortTableByColumn(table, columnIndex, isNumeric = false) {
+        const tbody = table.querySelector('tbody');
+        console.log('Table:', table);
+        console.log('Tbody:', tbody);
+
+        const rowsArray = Array.from(tbody.querySelectorAll('tr.table-course'));
+        console.log('Rows array:', rowsArray);
+
+        console.log('Sorting by column:', columnIndex);
+        console.log('Is numeric?', isNumeric);
+
+        rowsArray.sort((a, b) => {
+            const aColText = a.querySelector(`td:nth-child(${columnIndex + 1})`).textContent.trim();
+            const bColText = b.querySelector(`td:nth-child(${columnIndex + 1})`).textContent.trim();
+
+            console.log('Comparing:', aColText, bColText);
+
+            // Determine if we are sorting numerically or alphabetically
+            if (isNumeric) {
+                console.log('Sorting numerically');
+                return parseFloat(aColText) - parseFloat(bColText);
+            } else {
+                return aColText.localeCompare(bColText);
+            }
+        });
+
+        // Append sorted rows back to the table
+        rowsArray.forEach(row => tbody.appendChild(row));
+    }
+
+    // Add click event listener to the sortable table headers
+    document.querySelectorAll('th[data-sort]').forEach(header => {
+        header.addEventListener('click', function () {
+            console.log('Sorting by column:', header.textContent);
+            const table = header.closest('table');
+            const columnIndex = Array.from(header.parentNode.children).indexOf(header);
+            const isNumeric = header.getAttribute('data-sort') === 'delta'; // Add any numeric column names here
+
+            console.log('Column index:', columnIndex);
+            console.log('Is numeric?', isNumeric);
+
+            sortTableByColumn(table, columnIndex, isNumeric);
+        });
+    });
+</script>
+
             
         </div>
     </div>

@@ -21,11 +21,16 @@ class CourseController
         if (request()->has('department') && request('department')) {
             $query->where('subject_code', request('department'));
         }
+
+        if(request()->has('order_by') && request('order_by')) {
+            $query->orderBy(request('order_by'));
+        } else {
     
         // Order courses by subject_code and catalog_number
         $courses = $query->orderBy('subject_code')
                          ->orderBy('catalog_number')
                          ->get();
+        }
     
         return view('courses.index', compact('courses', 'departments'));
     }
