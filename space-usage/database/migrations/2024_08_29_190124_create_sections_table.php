@@ -18,6 +18,11 @@ return new class extends Migration
             $table->integer('enrol_cap');
             $table->text('component_code');
             $table->integer('day10_enrol');
+
+            $table->time('start_time');
+            $table->time('end_time');
+            $table->string('days');
+
             $table->foreignId('room_id')->constrained()->onDelete('cascade');
             
             $table->json('enrollments_by_dept')->nullable();

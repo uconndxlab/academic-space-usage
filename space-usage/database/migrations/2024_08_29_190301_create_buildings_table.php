@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('building_code')->unique();
             $table->string('description');
+            $table->string('type')->nullable();
             $table->timestamps();
         });
     }

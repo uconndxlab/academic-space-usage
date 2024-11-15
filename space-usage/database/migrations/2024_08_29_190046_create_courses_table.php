@@ -17,8 +17,10 @@ return new class extends Migration
             $table->string('class_descr');
             $table->string('catalog_number');
             $table->integer('wsch_max')->nullable();
-            $table->text('class_duration_weekly')->nullable();
-            $table->text('duration_minutes')->nullable();
+            $table->text('class_duration_weekly');
+            $table->integer('duration_minutes');
+            // start_time, end_time, days
+            $table->string('division');
             $table->foreignId('term_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });
