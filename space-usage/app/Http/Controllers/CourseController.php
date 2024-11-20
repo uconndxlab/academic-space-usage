@@ -28,7 +28,7 @@ class CourseController
     
         // Order courses by subject_code and catalog_number
         $courses = $query->orderBy('subject_code')
-                         ->orderBy('catalog_number')->get();
+                         ->orderBy('catalog_number')->paginate(200);
         }
     
         return view('courses.index', compact('courses', 'departments'));
