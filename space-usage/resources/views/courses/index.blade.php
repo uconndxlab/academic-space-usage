@@ -6,15 +6,27 @@
 
         <!-- filter by department -- select box of all the unique departments -->
         <div class="mb-4">
-            <form>
+            <form method="GET" action="{{ route('courses.index') }}">
                 <label for="departmentFilter" class="form-label">Filter by Department</label>
-                <select hx-get="{{ route('courses.index') }}" hx-target="#results" hx-select="#results" hx-swap="outerHTML"
-                    name="department" hx-trigger="change" hx-push-url="true" id="departmentFilter" class="form-select">
+                <select
+                    name="department" id="departmentFilter" class="form-select">
                     <option value="">All Departments</option>
                     @foreach ($departments as $department)
                         <option @selected($department == request('department')) value="{{ $department }}">{{ $department }}</option>
                     @endforeach
                 </select>
+
+                <!-- filter by campus -->
+                <label for="campusFilter" class="form-label">Filter by Campus</label>
+                <select
+                    name="campus" id="campusFilter" class="form-select">
+                    <option value="">All Campuses</option>
+                    @foreach ($campuses as $campus)
+                        <option @selected($campus->id == request('campus')) value="{{ $campus->id }}">{{ $campus->name }}</option>
+                    @endforeach
+                </select>
+
+                <input type="submit" value="Filter" class="btn btn-primary">
             </form>
 
         </div>

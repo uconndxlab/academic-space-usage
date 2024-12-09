@@ -35,4 +35,9 @@ class Section extends Model
     {
         return $this->enrollments_by_dept[$department] ?? 0;
     }
+
+    public function campus()
+    {
+        return $this->belongsTo(Campus::class);
+    }
 }

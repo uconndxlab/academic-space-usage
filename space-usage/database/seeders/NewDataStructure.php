@@ -9,6 +9,7 @@ use App\Models\Building;
 use App\Models\Room;
 use App\Models\Course;
 use App\Models\Section;
+use App\Models\Campus;
 
 // new origianl data structure is as follows:
 
@@ -210,7 +211,7 @@ class NewDataStructure extends Seeder
             }
 
             // Handle Section
-            Section::create([
+           $section = Section::create([
                 'section_number' => $data['Section'],
                 'course_id' => $course->id,
                 'enrol_cap' => $data['Enrl_Cap'],
@@ -222,6 +223,14 @@ class NewDataStructure extends Seeder
                 'room_id' => $room->id,
                 'enrollments_by_dept' => json_encode($enrollments_by_dept),
             ]);
+
+            // Handle Campus
+            $campus = Campus::firstOrCreate(
+                ['name' => $data['SA Facility Location']]
+            );
+
+            $section->campus()->associate($campus);
+            $section->save();
         }
 
         fclose($file);

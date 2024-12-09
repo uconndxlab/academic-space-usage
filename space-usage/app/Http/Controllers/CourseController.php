@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Course;
+use App\Models\Section;
+use App\Models\Campus;
 use Illuminate\Http\Request;
 
 class CourseController
@@ -14,25 +16,46 @@ class CourseController
     {
         // Get all unique departments (subject codes) from the database
         $departments = Course::select('subject_code')->distinct()->pluck('subject_code')->sort();
+    
+        // Initialize an empty collection for campuses
+        $campuses = collect();
+    
         // Build the initial query
         $query = Course::query();
     
-        // If there's a department filter, apply it
+        // Filter by department if the parameter exists
         if (request()->has('department') && request('department')) {
             $query->where('subject_code', request('department'));
+    
+            // Get campuses only for the filtered department
+            $campuses = Campus::whereHas('sections.course', function ($q) {
+                $q->where('subject_code', request('department'));
+            })->get()->sortBy('name');
+        } else {
+            // If no department filter is applied, fetch all campuses
+            $campuses = Campus::all()->sortBy('name');
         }
-
-        if(request()->has('order_by') && request('order_by')) {
+    
+        // Filter by campus if the parameter exists
+        if (request()->has('campus') && request('campus')) {
+            $query->whereHas('sections.campus', function ($q) {
+                $q->where('id', request('campus'));
+            });
+        }
+    
+        // Handle sorting
+        if (request()->has('order_by') && request('order_by')) {
             $query->orderBy(request('order_by'));
         } else {
-    
-        // Order courses by subject_code and catalog_number
-        $courses = $query->orderBy('subject_code')
-                         ->orderBy('catalog_number')->paginate(200);
+            $query->orderBy('subject_code')->orderBy('catalog_number');
         }
     
-        return view('courses.index', compact('courses', 'departments'));
+        // Paginate the results
+        $courses = $query->paginate(200);
+    
+        return view('courses.index', compact('courses', 'departments', 'campuses'));
     }
+    
     
 
     /**

@@ -3,7 +3,6 @@
 @section('content')
     <div class="container">
         <h1>{{ $building->description }} ({{ $building->building_code }})</h1>
-        <h2>Term: Fall 2023</h2>
         <h3>10th Day Enrollments</h3>
 
         <div class="row my-4">
