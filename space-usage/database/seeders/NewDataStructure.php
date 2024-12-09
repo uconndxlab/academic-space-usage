@@ -109,7 +109,6 @@ class NewDataStructure extends Seeder
                     'class_duration_weekly' => $data['class_duration_weekly'],
                     'duration_minutes' => $data['duration_minutes'],
                     'division' => $data['Division'],
-
                 ]
             );
 
@@ -224,6 +223,12 @@ class NewDataStructure extends Seeder
                 'enrollments_by_dept' => json_encode($enrollments_by_dept),
             ]);
 
+
+            
+
+
+            $course->save();
+
             // Handle Campus
             $campus = Campus::firstOrCreate(
                 ['name' => $data['SA Facility Location']]
@@ -231,6 +236,8 @@ class NewDataStructure extends Seeder
 
             $section->campus()->associate($campus);
             $section->save();
+
+
         }
 
         fclose($file);

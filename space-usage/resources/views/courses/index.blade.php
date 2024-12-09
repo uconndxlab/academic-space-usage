@@ -7,26 +7,29 @@
         <!-- filter by department -- select box of all the unique departments -->
         <div class="mb-4">
             <form method="GET" action="{{ route('courses.index') }}">
-                <label for="departmentFilter" class="form-label">Filter by Department</label>
-                <select
-                    name="department" id="departmentFilter" class="form-select">
-                    <option value="">All Departments</option>
-                    @foreach ($departments as $department)
-                        <option @selected($department == request('department')) value="{{ $department }}">{{ $department }}</option>
-                    @endforeach
-                </select>
+                <div class="form-group">
+                    <label for="departmentFilter" class="form-label">Filter by Department</label>
+                    <select name="department" id="departmentFilter" class="form-select">
+                        <option value="">All Departments</option>
+                        @foreach ($departments as $department)
+                            <option @selected($department == request('department')) value="{{ $department }}">{{ $department }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-                <!-- filter by campus -->
-                <label for="campusFilter" class="form-label">Filter by Campus</label>
-                <select
-                    name="campus" id="campusFilter" class="form-select">
-                    <option value="">All Campuses</option>
-                    @foreach ($campuses as $campus)
-                        <option @selected($campus->id == request('campus')) value="{{ $campus->id }}">{{ $campus->name }}</option>
-                    @endforeach
-                </select>
+                <div class="form-group mt-3">
+                    <label for="campusFilter" class="form-label">Filter by Campus</label>
+                    <select name="campus" id="campusFilter" class="form-select">
+                        <option value="">All Campuses</option>
+                        @foreach ($campuses as $campus)
+                            <option @selected($campus->id == request('campus')) value="{{ $campus->id }}">{{ $campus->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-                <input type="submit" value="Filter" class="btn btn-primary">
+                <div class="mt-3">
+                    <input type="submit" value="Filter" class="btn btn-primary">
+                </div>
             </form>
 
         </div>
@@ -52,6 +55,20 @@
                 <div class="tab-pane fade show active" id="current" role="tabpanel" aria-labelledby="current-tab">
                     <div class="card mt-4">
                         <div class="card-body">
+
+                            @if ($courses->isEmpty())
+                                <p>No courses available.</p>
+                            @else
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        Showing {{ $courses->firstItem() }} to {{ $courses->lastItem() }} of {{ $courses->total() }} courses
+                                    </div>
+                                    <div>
+                                        {{ $courses->links() }}
+                                    </div>
+                                </div>
+                            @endif
+
                             <table class="table table-hover">
                                 <thead style="position: sticky; top: 0;">
                                     <tr class="table-primary">
@@ -75,20 +92,53 @@
                                 <tbody>
                                     @foreach ($courses as $course)
                                         @php
-                                            // Current WSCH calculation
-                                            $totalWSCH = ceil(($course->sections->sum('day10_enrol') * $course->duration_minutes) / 60);
+                                            // Check if the course already has WSCH, WSCH Benchmark, and Rooms Needed set
+                                            if (!isset($course->total_wsch)) {
+                                                // Current WSCH calculation
+                                                $course->total_wsch = ceil(($course->sections->sum('day10_enrol') * $course->duration_minutes) / 60);
+                                            }
 
-                                            // WSCH Benchmark (based on room size)
-                                            $roomCapacity = $course->sections->first()->room->capacity;
+                                            if (!isset($course->wsch_benchmark)) {
+                                                // WSCH Benchmark (based on room size)
+                                                $roomCapacity = $course->sections->first()->room->capacity;
+                                                // calculate WSCH Benchmark like $capacity × 28 hours × 0.80,
+                                                // where 28 hours is the maximum weekly schedule hours and 0.80 is the 80% utilization rate for all of the rooms
+                                                $course->wsch_benchmark = round(28 * ($roomCapacity * 0.8), -1); // Benchmark rounded up
+                                            }
 
-                                            // calculate WSCH Bechmark like $capacity × 28 hours × 0.80,
-                                            // where 28 hours is the maximum weekly schedule hours and 0.80 is the 80% utilization rate for all of the rooms
-                                            $wschBenchmark = round(28 * ($roomCapacity * 0.8), -1); // Benchmark rounded up
+                                            if (!isset($course->rooms_needed)) {
+                                                // Rooms Needed based on benchmark
+                                                $course->rooms_needed = round($course->total_wsch / $course->wsch_benchmark, 2);
+                                            }
 
-                                            // Rooms Needed based on benchmark
-                                            $roomsNeeded = round($totalWSCH / $wschBenchmark, 2);
+                                            if(!isset($course->rooms_used)) {
+                                                // Calculate the number of rooms used
+                                                $course->rooms_used = $course->sections->unique('room_id')->count();
+                                            }
 
-                                            $delta =  $course->sections->unique('room_id')->count() - $roomsNeeded;
+                                            if(!isset($course->total_capacity)) {
+                                                // Calculate the total capacity of the rooms used
+                                                $course->total_capacity = $course->sections->unique('room_id')->sum('room.capacity');
+                                            }
+
+                                            if(!isset($course->delta)) {
+                                                // Calculate the delta
+                                                $course->delta = $course->sections->unique('room_id')->count() - $course->rooms_needed;
+                                            }
+
+                                            if(!isset($course->total_enrollment)) {
+                                                // Calculate the total enrollment
+                                                $course->total_enrollment = $course->sections->sum('day10_enrol');
+                                            }
+                                          
+
+
+                                            
+
+                                            // Save the course with the calculated values if they were not set
+                                            $course->save();
+
+                                            $delta = $course->delta;
 
                                             // $totalCapacity is the sum of unique room capacities
                                             $totalCapacity = $course->sections->unique('room_id')->sum('room.capacity');
@@ -109,12 +159,12 @@
                                             </a>
 
                                             </td>
-                                            <td>{{ $course->sections->unique('room_id')->count() }}</td>
-                                            <td>{{ $totalCapacity }}</td>
+                                            <td>{{ $course->rooms_used }}</td>
+                                            <td>{{ $course->total_capacity }}</td>
 
-                                            <td>{{ $totalWSCH }}</td>
-                                            <td>{{ $wschBenchmark }}</td>
-                                            <td>{{ $roomsNeeded }}</td>
+                                            <td>{{ $course->total_wsch }}</td>
+                                            <td>{{ $course->wsch_benchmark }}</td>
+                                            <td>{{ $course->rooms_needed }}</td>
                                             <td class="{{ $delta < 0 ? 'bg-danger' : '' }}">{{ $delta }}</td>
                                         </tr>
                                         <!-- Sub-rows for each room where the course is taught -->

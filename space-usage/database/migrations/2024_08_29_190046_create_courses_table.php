@@ -22,6 +22,15 @@ return new class extends Migration
             // start_time, end_time, days
             $table->string('division');
             $table->foreignId('term_id')->constrained()->onDelete('cascade');
+            $table->integer('total_wsch')->nullable();
+            $table->integer('total_capacity')->nullable();
+            $table->integer('total_enrollment')->nullable();
+            $table->integer('wsch_benchmark')->nullable();
+            $table->integer('rooms_needed')->nullable();
+            $table->integer('rooms_used')->nullable();
+            $table->integer('delta')->nullable();
+
+
             $table->timestamps();
         });
     }
