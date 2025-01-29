@@ -27,6 +27,17 @@
                     </select>
                 </div>
 
+                {{-- dropdown of all SA_Facility_Types --}}
+                <div class="form-group mt-3">
+                    <label for="facilityTypeFilter" class="form-label">Filter by Facility Type</label>
+                    <select name="sa_facility_type" id="facilityTypeFilter" class="form-select">
+                        <option value="">All Facility Types</option>
+                        @foreach ($facilityTypes as $facilityType)
+                            <option @selected($facilityType == request('sa_facility_type')) value="{{ $facilityType }}">{{ $facilityType }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <div class="mt-3">
                     <input type="submit" value="Filter" class="btn btn-primary">
                 </div>

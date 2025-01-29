@@ -81,7 +81,9 @@ class NewDataStructure extends Seeder
             // Handle Room
             $room = Room::firstOrCreate(
                 ['building_id' => $building->id, 'room_number' => $data['SA Facility Room Number']],
-                ['capacity' => $data['SA Facility Capacity'], 'room_description' => $data['SA Facility Description']]
+                ['capacity' => $data['SA Facility Capacity'], 'room_description' => $data['SA Facility Description'],
+                    'sa_facility_type' => $data['SA Facility Type'],
+                ]
             );
 
 
