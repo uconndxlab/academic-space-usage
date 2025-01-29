@@ -66,7 +66,7 @@ class NewDataStructure extends Seeder
             // Handle Term
             $term = Term::firstOrCreate(
                 ['term_code' => $data['Term_Code']],
-                ['term_descr' => $data['Term_Code']]
+                ['term_descr' => 'Fall 2024']
             );
 
             // Handle Building
