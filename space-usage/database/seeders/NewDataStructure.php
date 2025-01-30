@@ -78,6 +78,108 @@ class NewDataStructure extends Seeder
                 
             );
 
+// ACTV	Special
+// ARTG	Special
+// AUD	    Classroom
+// CLIN	LAB
+// CMLB	LAB
+// CMPL	LAB
+// CONF	Classroom
+// CRTR	Special
+// CSRA	Classroom
+// CSRM	Classroom
+// GENP	Special
+// LAB	    LAB
+// LNGE	Special
+// LVST	Special
+// MCHS	Special
+// MULT	Special
+// MUSI	Special
+// NRR	    NO ROOM
+// RSRC	Special 
+
+switch ($data['SA Facility Type']) {
+    case 'ACTV':
+        $data['SA Facility Type'] = 'Special';
+    break;
+
+    case 'ARTG':
+        $data['SA Facility Type'] = 'Special';
+    break;
+
+    case 'AUD':
+        $data['SA Facility Type'] = 'Classroom';
+    break;
+
+    case 'CLIN':
+        $data['SA Facility Type'] = 'LAB';
+    break;
+
+    case 'CMLB':
+        $data['SA Facility Type'] = 'LAB';
+    break;
+
+    case 'CMPL':
+        $data['SA Facility Type'] = 'LAB';
+    break;
+
+    case 'CONF':
+        $data['SA Facility Type'] = 'Classroom';
+    break;
+
+    case 'CRTR':
+        $data['SA Facility Type'] = 'Special';
+    break;
+
+    case 'CSRA':
+        $data['SA Facility Type'] = 'Classroom';
+    break;
+
+    case 'CSRM':
+        $data['SA Facility Type'] = 'Classroom';
+    break;
+
+    case 'GENP':
+        $data['SA Facility Type'] = 'Special';
+    break;
+
+    case 'LAB':
+        $data['SA Facility Type'] = 'LAB';
+    break;
+
+    case 'LNGE':
+        $data['SA Facility Type'] = 'Special';
+    break;
+
+    case 'LVST':
+        $data['SA Facility Type'] = 'Special';
+    break;
+
+    case 'MCHS':
+        $data['SA Facility Type'] = 'Special';
+    break;
+
+    case 'MULT':
+        $data['SA Facility Type'] = 'Special';
+    break;
+
+    case 'MUSI':
+        $data['SA Facility Type'] = 'Special';
+    break;
+
+    case 'NRR':
+        $data['SA Facility Type'] = 'NO ROOM';
+    break;
+
+    case 'RSRC':
+        $data['SA Facility Type'] = 'Special';
+    break;
+
+    default:
+        
+    break;
+}
+
             // Handle Room
             $room = Room::firstOrCreate(
                 ['building_id' => $building->id, 'room_number' => $data['SA Facility Room Number']],
