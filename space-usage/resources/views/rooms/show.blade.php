@@ -51,6 +51,7 @@
                 <tr>
                     <th>Course</th>
                     <th>Section</th>
+                    <th>Component Code</th>
                     <th>Enrollment</th>
                     <th>Max Enrollment</th>
                     <th>% Full</th>
@@ -65,6 +66,7 @@
                             </a>
                         </td>
                         <td>{{ $section->section_number }}</td>
+                        <td>{{ $section->component_code }}</td>
                         <td>{{ $section->day10_enrol }}</td>
                         <td>{{ $section->room->capacity }}</td>
                         <td>{{ number_format(($section->day10_enrol / $section->room->capacity) * 100, 2) }}%</td>

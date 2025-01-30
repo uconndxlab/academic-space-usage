@@ -12,7 +12,9 @@ class BuildingController
      */
     public function index()
     {
-        $buildings = Building::all();
+        // get buildings sorted by name
+        $buildings = Building::orderBy('description')->get();
+
         return view('buildings.index', compact('buildings'));
     }
 

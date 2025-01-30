@@ -78,7 +78,7 @@
         <div class="tab-content" id="buildingTabsContent">
             <div class="tab-pane fade show active" id="rooms" role="tabpanel" aria-labelledby="rooms-tab">
                 <div class="row">
-                    @foreach ($building->rooms as $room)
+                    @foreach ($building->rooms->sortBy('room_number') as $room)
 
 
                         @php
@@ -135,6 +135,7 @@
                         <thead>
                             <tr>
                                 <th>Section Code</th>
+                                <th>Component Code</th>
                                 <th>Course</th>
                                 <th>Room</th>
                                 <th>Capacity</th>
@@ -147,6 +148,7 @@
                                 @foreach ($room->sections as $section)
                                     <tr>
                                         <td>{{ $section->course->subject_code }}</td>
+                                        <td>{{ $section->component_code }}</td>
                                         <td>
                                             <a href="{{ route('courses.show', $section->course->id) }}">
                                                 {{ $section->course->subject_code }}
@@ -155,7 +157,7 @@
                                         </td>
                                         <td>
                                             <a href="{{ route('rooms.show', $room->id) }}">
-                                                {{ $building->building_code }} {{ $room->room_number }}
+                                                {{ $room->room_description }}
                                             </a>
                                         </td>
                                         <td>{{ $room->capacity }}</td>

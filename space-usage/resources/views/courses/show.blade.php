@@ -52,6 +52,7 @@
                 <table class="table table-striped table-hover">
                     <thead>
                         <tr>
+                            <th>Component Code</th>
                             <th>Room</th>
                             <th>Capacity</th>
                             <th>Enrollment</th>
@@ -61,9 +62,10 @@
                     <tbody>
                         @foreach($course->sections as $section)
                             <tr>
+                                <td>{{ $section->component_code }}</td>
                                 <td>
                                     <a href="{{ route('buildings.show', $section->room->building->id) }}">
-                                        {{ $section->room->building->building_code }} {{ $section->room->room_number }}
+                                        {{ $section->room->room_description }}
                                     </a>
                                 </td>
                                 <td>{{ $section->room->capacity }}</td>
