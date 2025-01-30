@@ -5,8 +5,9 @@
 <div class="container mt-5">
     <h1>{{ $room->room_description }} ({{ $room->room_number }})</h1>
     <h2>Building: {{ $room->building->description }} ({{ $room->building->building_code }})</h2>
-    <h3>Term: Fall 2023</h3>
-    <h4>10th Day Enrollments</h4>
+    <h3>Term: Fall 2024</h3>
+    <h5>Room Capacity: {{ $room->capacity }}</h5>
+    <h5>Room Type: {{ $room->sa_facility_type }}</h5>
     <div class="row my-4">
         <div class="col-md-3">
             <div class="card">

@@ -14,99 +14,49 @@ class CourseController
 {
     // Get all unique departments (subject codes) from the database
     $departments = Course::select('subject_code')->distinct()->pluck('subject_code')->sort();
-
-    // Initialize an empty collection for campuses
-    $campuses = collect();
-
-    // Build the initial query with a base table
-    $query = Course::query()->select('courses.*');
-
     $facilityTypes = Room::select('sa_facility_type')->distinct()->pluck('sa_facility_type')->sort();
+    $campuses = Campus::orderBy('name')->get(); // Default campus list
 
-    // Filter by department
-    if ($department = request('department')) {
-        $query->where('subject_code', $department);
+    // Initialize sections as an empty query builder instance
+    $sections = Section::query();
 
-        // Optimize campus filtering by using a direct join
-        $campuses = Campus::whereIn('id', function ($q) use ($department) {
-            $q->select('campus_id')
-              ->from('sections')
-              ->join('courses', 'sections.course_id', '=', 'courses.id')
-              ->where('courses.subject_code', $department);
-        })->orderBy('name')->get();
-    } else {
-        $campuses = Campus::orderBy('name')->get();
+    // if a campus is selected, select only the courses that are offered on that campus
+    if (request('campus')) {
+        $campus = Campus::find(request('campus'));
+        
+        // get the sections that are offered on the selected campus
+        $sections = $sections->whereHas('room', function ($query) use ($campus) {
+            $query->where('campus_id', $campus->id);
+        });
     }
 
-    // Join with sections if campus filtering is needed
-    if ($campusId = request('campus')) {
-        $query->join('sections', 'sections.course_id', '=', 'courses.id')
-              ->where('sections.campus_id', $campusId);
+    // if sa_facility_type is selected, further filter the sections where room's sa_facility_type matches the selected sa_facility_type
+    if (request('sa_facility_type')) {
+        $sections = $sections->whereHas('room', function ($query) {
+            $query->where('sa_facility_type', request('sa_facility_type'));
+        });
     }
 
-    // Join with rooms if sa_facility_type filtering is needed
-    if ($facilityType = request('sa_facility_type')) {
-        $query->join('sections as sec_facility', 'sec_facility.course_id', '=', 'courses.id')
-              ->join('rooms', 'rooms.id', '=', 'sec_facility.room_id')
-              ->where('rooms.sa_facility_type', $facilityType);
+    // if department is selected, further filter the sections where course's subject_code matches the selected subject_code
+    if (request('department')) {
+        $sections = $sections->whereHas('course', function ($query) {
+            $query->where('subject_code', request('department'));
+        });
     }
 
-    // Handle sorting dynamically
-    $sortableColumns = [
-        'subject_code',
-        'catalog_number',
-        'enrollment',
-        'sections_count',
-        'rooms_count',
-        'total_capacity',
-        'total_wsch',
-        'wsch_benchmark',
-        'delta'
-    ];
+    // get the unique courses from the filtered sections
+    $courses = Course::whereIn('id', $sections->pluck('course_id'))->paginate(50);
 
-    if ($orderBy = request('order_by')) {
-        $direction = request('direction', 'asc');
 
-        if (in_array($orderBy, $sortableColumns)) {
-            switch ($orderBy) {
-                case 'enrollment':
-                    $query->withSum('sections', 'day10_enrol')->orderBy('sections_sum_day10_enrol', $direction);
-                    break;
-                case 'sections_count':
-                    $query->withCount('sections')->orderBy('sections_count', $direction);
-                    break;
-                case 'rooms_count':
-                    $query->withCount(['sections as unique_rooms_count' => function ($q) {
-                        $q->selectRaw('count(distinct room_id)');
-                    }])->orderBy('unique_rooms_count', $direction);
-                    break;
-                case 'total_capacity':
-                    $query->withCount(['sections as total_capacity' => function ($q) {
-                        $q->selectRaw('sum(capacity)');
-                    }])->orderBy('total_capacity', $direction);
-                    break;
-                case 'wsch_benchmark':
-                    $query->withSum('sections', 'wsch_benchmark')->orderBy('sections_sum_wsch_benchmark', $direction);
-                    break;
-                case 'delta':
-                    $query->withSum('sections', 'delta')->orderBy('sections_sum_delta', $direction);
-                    break;
-                default:
-                    $query->orderBy($orderBy, $direction);
-            }
-        }
-    } else {
-        $query->orderBy('subject_code')->orderBy('catalog_number');
-    }
 
-    // Paginate the results and append query parameters
-    $courses = $query->distinct()->paginate(80)->appends(request()->query());
 
     return view('courses.index', compact('courses', 'departments', 'campuses', 'facilityTypes'));
 }
 
     
-    
+
+
+
 
 
 

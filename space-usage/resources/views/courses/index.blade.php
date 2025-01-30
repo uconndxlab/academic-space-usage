@@ -146,8 +146,7 @@
 
                                             
 
-                                            // Save the course with the calculated values if they were not set
-                                            $course->save();
+                                           
 
                                             $delta = $course->delta;
 
@@ -161,12 +160,19 @@
                                                 {{ $course->subject_code }} {{ $course->catalog_number }}
                                             </a>
                                             </td>
-                                            <td>{{ $course->sections->sum('day10_enrol') }}</td>
+                                            @php
+                                            $filteredSections = $course->sections->filter(function ($section) {
+                                                return request('sa_facility_type') ? $section->room->sa_facility_type === request('sa_facility_type') : true;
+                                            });
+                                        @endphp
+                                        
+                                        <td>{{ $filteredSections->sum('day10_enrol') }}</td>
+                                        
                                             <td>
                                                 <a
                                                  class="sections-count"
                                                  href="javascript:void(0);">
-                                                {{ $course->sections->count() }}
+                                                 {{ $filteredSections->count() }}
                                             </a>
 
                                             </td>
@@ -179,9 +185,10 @@
                                             <td class="{{ $delta < 0 ? 'bg-danger' : '' }}">{{ $delta }}</td>
                                         </tr>
                                         <!-- Sub-rows for each room where the course is taught -->
-                                        @foreach ($course->sections->sortBy('section_number') as $section)
+                                        @foreach ($filteredSections as $section)
                                             <!-- only show the unique rooms -->
-
+                                            {{-- if sa_facility_type is set and the section does not match, skip --}}
+                                          
 
                                             <tr class="table-secondary" data-course="course-{{ $course->id }}">
                                                 <td colspan="1">{{ $section->room->building->building_code }}
@@ -246,9 +253,10 @@
 
 
                                         $totalWSCH = ceil($totalEnrollment * $weeklyContactHours);
-                                        $roomCapacity = $course->sections->first()->room->capacity;
+                                        $roomCapacity = $filteredSections->first()->room->capacity;
                                         $wschBenchmark = round(28 * ($roomCapacity * 0.80), -1); // Benchmark rounded up
-                                        $existingLabs = $course->sections->unique('room_id')->count();
+                                        $existingLabs = $filteredSections->unique('room_id')->count();
+
                                         $labsNeeded = round($totalWSCH / $wschBenchmark, 2);
 
                                         $delta =  $existingLabs - $labsNeeded;

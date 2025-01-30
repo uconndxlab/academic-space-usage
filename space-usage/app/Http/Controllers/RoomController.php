@@ -12,9 +12,17 @@ class RoomController
      */
     public function index()
     {
-        $rooms = Room::all();
+        // Get rooms, sorted by building name first, then room number
+        $rooms = Room::with('building')
+             ->join('buildings', 'rooms.building_id', '=', 'buildings.id')
+             ->orderBy('buildings.description')
+             ->orderBy('room_number')
+             ->get()
+             ->groupBy('building_id');
+    
         return view('rooms.index', compact('rooms'));
     }
+    
 
     /**
      * Show the form for creating a new resource.
