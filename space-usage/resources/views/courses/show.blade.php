@@ -64,7 +64,7 @@
                             <tr>
                                 <td>{{ $section->component_code }}</td>
                                 <td>
-                                    <a href="{{ route('buildings.show', $section->room->building->id) }}">
+                                    <a href="{{ route('rooms.show', $section->room->id) }}">
                                         {{ $section->room->room_description }}
                                     </a>
                                 </td>

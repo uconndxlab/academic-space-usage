@@ -150,8 +150,7 @@
 
                                             $delta = $course->delta;
 
-                                            // $totalCapacity is the sum of unique room capacities
-                                            $totalCapacity = $course->sections->unique('room_id')->sum('room.capacity');
+
                                         @endphp
 
                                         <tr class="table-course" id="course-{{ $course->id }}">
@@ -164,6 +163,9 @@
                                             $filteredSections = $course->sections->filter(function ($section) {
                                                 return request('sa_facility_type') ? $section->room->sa_facility_type === request('sa_facility_type') : true;
                                             });
+
+                                            // $totalCapacity is the sum of unique room capacities matching the current facility type
+                                            $totalCapacity = $filteredSections->unique('room_id')->sum('room.capacity');
                                         @endphp
                                         
                                         <td>{{ $filteredSections->sum('day10_enrol') }}</td>
@@ -177,7 +179,9 @@
 
                                             </td>
                                             <td>{{ $course->rooms_used }}</td>
-                                            <td>{{ $course->total_capacity }}</td>
+                                            <td>
+                                                {{ $totalCapacity }}
+                                            </td>
 
                                             <td>{{ $course->total_wsch }}</td>
                                             <td>{{ $course->wsch_benchmark }}</td>
