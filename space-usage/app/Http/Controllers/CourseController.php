@@ -7,6 +7,7 @@ use App\Models\Section;
 use App\Models\Campus;
 use Illuminate\Http\Request;
 use App\Models\Room;
+use Termwind\Components\Raw;
 
 class CourseController
 {
@@ -97,15 +98,35 @@ class CourseController
     /**
      * Display the specified resource.
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $course = Course::find($id);
-        $currentEnrollment = $course->sections->sum('day10_enrol'); // Example: current enrollment
-        $componentCodes = $course->sections->pluck('component_code')->unique();
-        $campuses = Campus::orderBy('name')->get(); // Default campus list
+        $selectedCampus = $request->input('campus_id', 1); // Default campus ID to 1 if not provided
+        $selectedCampus = Campus::find($selectedCampus);
+        $facilityType = $request->input('sa_facility_type', "LAB");
+        $facilityTypes = Room::select('sa_facility_type')->distinct()->pluck('sa_facility_type')->sort();
 
-        return view('courses.show', compact('course', 'currentEnrollment', 'componentCodes', 'campuses'));
+    
+        // Filter sections based on campus and facility type
+        $sections = $course->sections()->whereHas('room', function ($query) use ($selectedCampus, $facilityType) {
+            if ($selectedCampus) {
+                $query->where('campus_id', $selectedCampus->id);
+            }
+            if ($facilityType) {
+                $query->where('sa_facility_type', $facilityType);
+            }
+        })->get();
+    
+        $course->sections = $sections;
+    
+        $currentEnrollment = $sections->sum('day10_enrol');
+        $componentCodes = $sections->pluck('component_code')->unique();
+        $campuses = Campus::orderBy('name')->get();
+        $selectedFacilityType = $facilityType;
+    
+        return view('courses.show', compact('course', 'currentEnrollment', 'componentCodes', 'campuses', 'selectedCampus', 'selectedFacilityType', 'facilityTypes'));
     }
+    
 
     public function simulateRoomNeeds(Request $request, $id)
     {

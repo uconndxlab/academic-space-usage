@@ -70,10 +70,9 @@
                             @if ($courses->isEmpty())
                                 <p>No courses available.</p>
                             @else
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
                                     <div>
-                                        Showing {{ $courses->first()->count() }} to {{ $courses->last()->count() }} of
-                                        {{ $courses->count() }} courses
+                                      Showing {{ $courses->count() }} Courses
                                     </div>
 
                                 </div>
@@ -97,7 +96,7 @@
                                     @foreach ($courses as $course)
                                         <tr>
                                             <td>
-                                                <a href="{{ route('courses.show', $course->id) }}">
+                                                <a href="{{ route('courses.show', $course->id) }}?campus_id={{ request('campus') }}&sa_facility_type={{ request('sa_facility_type') }}">
                                                     {{ $course->subject_code }} {{ $course->catalog_number }}
                                                 </a>
                                             </td>
@@ -197,20 +196,23 @@
 
                     // Update the forecast table
                     document.querySelectorAll('.course-row').forEach(row => {
-                        const originalEnrollment = parseFloat(row.querySelector('.forecast-students-input').getAttribute('data-original-enrollment'));
+                        const originalEnrollment = parseFloat(row.querySelector('.forecast-students-input')
+                            .getAttribute('data-original-enrollment'));
                         const newEnrollment = originalEnrollment + (originalEnrollment * increase);
                         console.log('New enrollment:', newEnrollment);
 
                         row.querySelector('.forecast-students-input').value = newEnrollment;
 
                         // Update the WSCH
-                        const weeklyContactHours = parseFloat(row.querySelector('.forecast-students-input').getAttribute('data-weekly-contact-hours'));
+                        const weeklyContactHours = parseFloat(row.querySelector('.forecast-students-input')
+                            .getAttribute('data-weekly-contact-hours'));
                         console.log('Weekly Contact Hours:', weeklyContactHours);
 
                         // ceil(($course->total_enrollment * $course->duration_minutes) / 60);
-                        const course_duration_minutes = parseFloat(row.querySelector('.forecast-students-input').getAttribute('data-duration-minutes'));
+                        const course_duration_minutes = parseFloat(row.querySelector('.forecast-students-input')
+                            .getAttribute('data-duration-minutes'));
                         const newWsch = Math.ceil((newEnrollment * course_duration_minutes) / 60);
-                        
+
                         console.log('New WSCH:', newWsch);
                         row.querySelector('.forecast-wsch').textContent = newWsch;
 
@@ -222,7 +224,8 @@
                         row.querySelector('.forecast-labs-needed').textContent = newLabsNeeded;
 
                         // Update the delta
-                        const current_rooms = parseFloat(row.querySelector('.forecast-students-input').getAttribute('data-current-rooms'));
+                        const current_rooms = parseFloat(row.querySelector('.forecast-students-input').getAttribute(
+                            'data-current-rooms'));
                         const delta = (current_rooms - newLabsNeeded).toFixed(2);
                         console.log('Delta:', delta);
                         row.querySelector('.forecast-delta').textContent = delta;
@@ -247,7 +250,8 @@
                         this.closest('tr').querySelector('.forecast-wsch').textContent = newWsch;
 
                         // Update the labs needed
-                        const wschBenchmark = parseFloat(this.closest('tr').querySelector('.wsch-benchmark').textContent);
+                        const wschBenchmark = parseFloat(this.closest('tr').querySelector('.wsch-benchmark')
+                            .textContent);
                         const newLabsNeeded = (newWsch / wschBenchmark).toFixed(2);
                         console.log('New labs needed:', newLabsNeeded);
                         this.closest('tr').querySelector('.forecast-labs-needed').textContent = newLabsNeeded;
@@ -257,11 +261,10 @@
                         const delta = (current_rooms - newLabsNeeded).toFixed(2);
                         console.log('Delta:', delta);
                         this.closest('tr').querySelector('.forecast-delta').textContent = delta;
-                        this.closest('tr').querySelector('.forecast-delta').classList.toggle('bg-danger', delta < 0);
+                        this.closest('tr').querySelector('.forecast-delta').classList.toggle('bg-danger', delta <
+                        0);
                     });
                 });
-
-
             </script>
 
 
