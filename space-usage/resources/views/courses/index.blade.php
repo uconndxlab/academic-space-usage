@@ -229,6 +229,39 @@
                         row.querySelector('.forecast-delta').classList.toggle('bg-danger', delta < 0);
                     });
                 });
+
+                // do the same for each .forecast-students-input
+                document.querySelectorAll('.forecast-students-input').forEach(input => {
+                    input.addEventListener('input', function() {
+                        const newEnrollment = parseFloat(this.value);
+                        console.log('New enrollment:', newEnrollment);
+
+                        // Update the WSCH
+                        const weeklyContactHours = parseFloat(this.getAttribute('data-weekly-contact-hours'));
+                        console.log('Weekly Contact Hours:', weeklyContactHours);
+
+                        // ceil(($course->total_enrollment * $course->duration_minutes) / 60);
+                        const course_duration_minutes = parseFloat(this.getAttribute('data-duration-minutes'));
+                        const newWsch = Math.ceil((newEnrollment * course_duration_minutes) / 60);
+                        console.log('New WSCH:', newWsch);
+                        this.closest('tr').querySelector('.forecast-wsch').textContent = newWsch;
+
+                        // Update the labs needed
+                        const wschBenchmark = parseFloat(this.closest('tr').querySelector('.wsch-benchmark').textContent);
+                        const newLabsNeeded = (newWsch / wschBenchmark).toFixed(2);
+                        console.log('New labs needed:', newLabsNeeded);
+                        this.closest('tr').querySelector('.forecast-labs-needed').textContent = newLabsNeeded;
+
+                        // Update the delta
+                        const current_rooms = parseFloat(this.getAttribute('data-current-rooms'));
+                        const delta = (current_rooms - newLabsNeeded).toFixed(2);
+                        console.log('Delta:', delta);
+                        this.closest('tr').querySelector('.forecast-delta').textContent = delta;
+                        this.closest('tr').querySelector('.forecast-delta').classList.toggle('bg-danger', delta < 0);
+                    });
+                });
+
+
             </script>
 
 
