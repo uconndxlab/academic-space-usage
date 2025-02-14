@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title') - Academic Space Dashboard </title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    {{-- css/app.css --}}
+    <link href={{ asset('css/app.css') }} rel="stylesheet">
 
 
     {{-- <link href={{ asset('css/bootstrap-superhero.min.css') }} rel="stylesheet"> --}}
@@ -47,13 +49,58 @@
         .card {
             height: 100%;
         }
+
+        tr {
+    cursor: unset!important;
+}
+
+body {
+    background-color: #f8f9fa;
+    color: #002855; /* UConn Blue */
+}
+
+.navbar {
+    background-color: #002855; /* UConn Blue */
+}
+
+.navbar a {
+    color: #ffffff;
+}
+
+.btn-primary {
+    background-color: #002855; /* UConn Blue */
+    border-color: #002855; /* UConn Blue */
+}
+
+.btn-primary:hover {
+    background-color: #001f3f; /* Darker shade of UConn Blue */
+    border-color: #001a35; /* Darker shade of UConn Blue */
+}
+
+.table {
+    background-color: #ffffff;
+    color: #002855; /* UConn Blue */
+}
+
+.table thead th {
+    background-color: #002855; /* UConn Blue */
+    color: #ffffff;
+}
+
+.table tbody tr:nth-child(odd) {
+    background-color: #f2f2f2;
+}
+
+.table tbody tr:hover {
+    background-color: #e9ecef;
+}
  
     </style>
 
     <script src="https://unpkg.com/htmx.org@2.0.2" integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ" crossorigin="anonymous"></script>
 
 </head>
-<body data-bs-theme="dark">
+<body>
     <!-- bootstrap nav for rooms, buildings, and courses -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">

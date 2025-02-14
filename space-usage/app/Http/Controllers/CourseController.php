@@ -11,49 +11,66 @@ use App\Models\Room;
 class CourseController
 {
     public function index()
-{
-    // Get all unique departments (subject codes) from the database
-    $departments = Course::select('subject_code')->distinct()->pluck('subject_code')->sort();
-    $facilityTypes = Room::select('sa_facility_type')->distinct()->pluck('sa_facility_type')->sort();
-    $campuses = Campus::orderBy('name')->get(); // Default campus list
-
-    // Initialize sections as an empty query builder instance
-    $sections = Section::query();
-
-    // if a campus is selected, select only the courses that are offered on that campus
-    if (request('campus')) {
-        $campus = Campus::find(request('campus'));
-        
-        // get the sections that are offered on the selected campus
-        $sections = $sections->whereHas('room', function ($query) use ($campus) {
-            $query->where('campus_id', $campus->id);
-        });
-    }
-
-    // if sa_facility_type is selected, further filter the sections where room's sa_facility_type matches the selected sa_facility_type
-    if (request('sa_facility_type')) {
-        $sections = $sections->whereHas('room', function ($query) {
-            $query->where('sa_facility_type', request('sa_facility_type'));
-        });
-    }
-
-    // if department is selected, further filter the sections where course's subject_code matches the selected subject_code
-    if (request('department')) {
-        $sections = $sections->whereHas('course', function ($query) {
-            $query->where('subject_code', request('department'));
-        });
-    }
-
-    // get the unique courses from the filtered sections
-    $courses = Course::whereIn('id', $sections->pluck('course_id'))->paginate(50);
-
-
-
-
-    return view('courses.index', compact('courses', 'departments', 'campuses', 'facilityTypes'));
-}
-
+    {
+        $departments = Course::select('subject_code')->distinct()->pluck('subject_code')->sort();
+        $facilityTypes = Room::select('sa_facility_type')->distinct()->pluck('sa_facility_type')->sort();
+        $campuses = Campus::orderBy('name')->get();
     
+        // Query sections with relationships
+        $sections = Section::query()->with(['course', 'room', 'room.building']);
+    
+        if (request('campus')) {
+            $campus = Campus::find(request('campus'));
+            $sections->whereHas('room', function ($query) use ($campus) {
+                $query->where('campus_id', $campus->id);
+            });
+        }
+    
+        if (request('sa_facility_type')) {
+            $sections->whereHas('room', function ($query) {
+                $query->where('sa_facility_type', request('sa_facility_type'));
+            });
+        }
+    
+        if (request('department')) {
+            $sections->whereHas('course', function ($query) {
+                $query->where('subject_code', request('department'));
+            });
+        }
+    
+        // Get filtered sections and group them by course
+        $filteredSections = $sections->get();
+        $courses = $filteredSections->groupBy('course_id')->map(function ($sections) {
+            $course = $sections->first()->course;
+    
+            $course->total_enrollment = $sections->sum('day10_enrol');
+            $course->sections_count = $sections->count();
+            $course->rooms_used = $sections->unique('room_id')->count();
+            $course->total_capacity = $sections->unique('room_id')->sum('room.capacity');
+    
+            // WSCH calculation
+            $course->total_wsch = ceil(($course->total_enrollment * $course->duration_minutes) / 60);
+    
+            // WSCH Benchmark
+            $roomCapacity = optional($sections->first()->room)->capacity ?? 1; // Avoid division by zero
+            $course->wsch_benchmark = round(28 * ($roomCapacity * 0.8), -1);
+    
+            // Rooms Needed
+            $course->rooms_needed = round($course->total_wsch / $course->wsch_benchmark, 2);
+
+            
+    
+            // Delta
+            $course->delta = $course->rooms_used - $course->rooms_needed;
+    
+            return $course;
+        })->values(); // Reset array keys
+    
+        return view('courses.index', compact('courses', 'departments', 'campuses', 'facilityTypes'));
+    }
+    
+
+
 
 
 
@@ -84,8 +101,10 @@ class CourseController
     {
         $course = Course::find($id);
         $currentEnrollment = $course->sections->sum('day10_enrol'); // Example: current enrollment
+        $componentCodes = $course->sections->pluck('component_code')->unique();
+        $campuses = Campus::orderBy('name')->get(); // Default campus list
 
-        return view('courses.show', compact('course', 'currentEnrollment'));
+        return view('courses.show', compact('course', 'currentEnrollment', 'componentCodes', 'campuses'));
     }
 
     public function simulateRoomNeeds(Request $request, $id)
