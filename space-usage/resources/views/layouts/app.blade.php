@@ -124,6 +124,13 @@ body {
                         <a class="nav-link" href="{{ route('terms.index') }}">Terms</a>
                     </li>
                 </ul>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('admin.import.index') }}">
+                            <i class="bi bi-cloud-upload"></i> Import Data
+                        </a>
+                    </li>
+                </ul>
             </div>
         </div>
     </nav>

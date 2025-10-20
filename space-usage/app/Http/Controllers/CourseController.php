@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\Section;
 use App\Models\Campus;
+use App\Models\Term;
 use Illuminate\Http\Request;
 use App\Models\Room;
 use Termwind\Components\Raw;
@@ -13,12 +14,30 @@ class CourseController
 {
     public function index()
     {
-        $departments = Course::select('subject_code')->distinct()->pluck('subject_code')->sort();
-        $facilityTypes = Room::select('sa_facility_type')->distinct()->pluck('sa_facility_type')->sort();
+        $departments = Course::select('subject_code')->distinct()->orderBy('subject_code')->pluck('subject_code');
+        $facilityTypes = Room::select('sa_facility_type')->distinct()->whereNotNull('sa_facility_type')->orderBy('sa_facility_type')->pluck('sa_facility_type');
         $campuses = Campus::orderBy('name')->get();
+        $terms = Term::orderBy('term_code', 'desc')->get();
+        
+        // Don't load courses unless filters are applied
+        if (!request('term_id')) {
+            return view('courses.index', [
+                'courses' => collect([]),
+                'departments' => $departments,
+                'campuses' => $campuses,
+                'facilityTypes' => $facilityTypes,
+                'terms' => $terms,
+                'requiresFilter' => true
+            ]);
+        }
     
         // Query sections with relationships
         $sections = Section::query()->with(['course', 'room', 'room.building']);
+        
+        // Filter by term (required)
+        $sections->whereHas('course', function ($query) {
+            $query->where('term_id', request('term_id'));
+        });
     
         if (request('campus')) {
             $campus = Campus::find(request('campus'));
@@ -49,25 +68,66 @@ class CourseController
             $course->rooms_used = $sections->unique('room_id')->count();
             $course->total_capacity = $sections->unique('room_id')->sum('room.capacity');
     
-            // WSCH calculation
-            $course->total_wsch = ceil(($course->total_enrollment * $course->duration_minutes) / 60);
+            // Contact Hours (CH) - total hours per week for all sections
+            $course->contact_hours = $sections->sum(function($section) {
+                return ($section->course->duration_minutes ?? 0) / 60;
+            });
     
-            // WSCH Benchmark
+            // Total WSCH calculation
+            $course->total_wsch = ceil(($course->total_enrollment * ($course->duration_minutes ?? 0)) / 60);
+    
+            // Average per section
+            $course->average_per_section = $course->sections_count > 0 
+                ? round($course->total_wsch / $course->sections_count, 2) 
+                : 0;
+    
+            // Enrollment growth 20%
+            $course->enroll_growth_20 = ceil($course->total_enrollment * 1.20);
+    
+            // WSCH growth (20% enrollment increase)
+            $course->wsch_growth = ceil(($course->enroll_growth_20 * ($course->duration_minutes ?? 0)) / 60);
+    
+            // Students per section
+            $course->students_per_section = $course->sections_count > 0 
+                ? round($course->total_enrollment / $course->sections_count, 2) 
+                : 0;
+    
+            // WSCH Benchmark (updated to 75% utilization)
             $roomCapacity = optional($sections->first()->room)->capacity ?? 1; // Avoid division by zero
-            $course->wsch_benchmark = round(28 * ($roomCapacity * 0.8), -1);
+            $course->seating_capacity_75_utiliz = round($roomCapacity * 0.75);
+            $course->wsch_benchmark = round(28 * $course->seating_capacity_75_utiliz, -1);
     
-            // Rooms Needed
-            $course->rooms_needed = round($course->total_wsch / $course->wsch_benchmark, 2);
-
-            
+            // Rooms Needed (based on 75% utilization benchmark)
+            $course->rooms_needed = $course->wsch_benchmark > 0 
+                ? round($course->total_wsch / $course->wsch_benchmark, 2) 
+                : 0;
     
-            // Delta
+            // Seating range (min-max capacity across rooms)
+            $roomCapacities = $sections->pluck('room.capacity')->filter();
+            if ($roomCapacities->isNotEmpty()) {
+                $minCapacity = $roomCapacities->min();
+                $maxCapacity = $roomCapacities->max();
+                $course->seating_range = $minCapacity === $maxCapacity 
+                    ? (string)$minCapacity 
+                    : "{$minCapacity}-{$maxCapacity}";
+            } else {
+                $course->seating_range = 'N/A';
+            }
+    
+            // Delta (rooms used vs rooms needed)
             $course->delta = $course->rooms_used - $course->rooms_needed;
     
             return $course;
         })->values(); // Reset array keys
     
-        return view('courses.index', compact('courses', 'departments', 'campuses', 'facilityTypes'));
+        return view('courses.index', [
+            'courses' => $courses,
+            'departments' => $departments,
+            'campuses' => $campuses,
+            'facilityTypes' => $facilityTypes,
+            'terms' => $terms,
+            'requiresFilter' => false
+        ]);
     }
     
 

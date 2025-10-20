@@ -12,6 +12,7 @@ use App\Http\Controllers\CourseController;
 use App\Http\Controllers\TermController;
 use App\Http\Controllers\BuildingController;
 use App\Http\Controllers\RoomController;
+use App\Http\Controllers\Admin\ImportController;
 
 
 Route::get('/', [TermController::class, 'index'])->name('terms.index');
@@ -35,4 +36,12 @@ Route::get('course/{subject_code}/{catalog_number}', [CourseController::class, '
 
 Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
 Route::get('/room/{id}', [RoomController::class, 'show'])->name('rooms.show');
+
+// Admin Import Routes
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/import', [ImportController::class, 'index'])->name('import.index');
+    Route::post('/import/upload', [ImportController::class, 'upload'])->name('import.upload');
+    Route::post('/import/run', [ImportController::class, 'import'])->name('import.run');
+    Route::get('/import/status', [ImportController::class, 'status'])->name('import.status');
+});
 
