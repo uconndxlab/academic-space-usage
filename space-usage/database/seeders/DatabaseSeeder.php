@@ -15,12 +15,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
-
+        // Create a test user
+        \App\Models\User::firstOrCreate(
+            ['netID' => 'ABCD1234'], #I WOULD PUT YOUR NETID HERE SO THAT YOU DONT HAVE TO MANUALLY ADD IT
+            ['isAdmin' => true]
+        );
     }
 }

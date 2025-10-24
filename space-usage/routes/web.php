@@ -12,27 +12,36 @@ use App\Http\Controllers\CourseController;
 use App\Http\Controllers\TermController;
 use App\Http\Controllers\BuildingController;
 use App\Http\Controllers\RoomController;
+use App\Http\Controllers\AdminController;
 
 
-Route::get('/', [TermController::class, 'index'])->name('terms.index');
-Route::get('/terms/{term}', [TermController::class, 'show'])->name('terms.show');
+Route::middleware('cas.auth')->group(function () {
+    Route::get('/', [TermController::class, 'index'])->name('terms.index');
+    Route::get('/terms/{term}', [TermController::class, 'show'])->name('terms.show');
 
-Route::get('/buildings', [BuildingController::class, 'index'])->name('buildings.index');
-Route::get('/buildings/{id}', [BuildingController::class, 'show'])->name('buildings.show');
+    Route::get('/buildings', [BuildingController::class, 'index'])->name('buildings.index');
+    Route::get('/buildings/{id}', [BuildingController::class, 'show'])->name('buildings.show');
 
+    Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+    // Show the course details
+    Route::get('/course/{id}', [CourseController::class, 'show'])->name('courses.show');
 
-
-
-Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
-// Show the course details
-Route::get('/course/{id}', [CourseController::class, 'show'])->name('courses.show');
-
-// Handle room simulation
-Route::post('/course/{id}/simulate', [CourseController::class, 'simulateRoomNeeds'])->name('course.simulateRoomNeeds');
+    // Handle room simulation
+    Route::post('/course/{id}/simulate', [CourseController::class, 'simulateRoomNeeds'])->name('course.simulateRoomNeeds');
 
 
-Route::get('course/{subject_code}/{catalog_number}', [CourseController::class, 'showByCodeAndNumber'])->name('course.byCodeAndNumber');
+    Route::get('course/{subject_code}/{catalog_number}', [CourseController::class, 'showByCodeAndNumber'])->name('course.byCodeAndNumber');
 
-Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
-Route::get('/room/{id}', [RoomController::class, 'show'])->name('rooms.show');
+    Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
+    Route::get('/room/{id}', [RoomController::class, 'show'])->name('rooms.show');
 
+    //admin routes - only accessible to admins
+    Route::get('/admin', [AdminController::class, 'index'])->name('admin.index');
+    Route::post('/admin', [AdminController::class, 'addUser'])->name('admin.addUser');
+    Route::delete('/admin/{id}', [AdminController::class, 'removeUser'])->name('admin.removeUser');
+    Route::delete('/admin/{id}/remove', [AdminController::class, 'removeUserForm'])->name('admin.removeUserForm');
+});
+
+Route::get('/invalidLogin', function () {
+    return view('invalidLogin');
+})->name('invalidLogin');

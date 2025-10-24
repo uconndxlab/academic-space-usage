@@ -123,6 +123,11 @@ body {
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('terms.index') }}">Terms</a>
                     </li>
+                    @if (Auth::user()->isAdmin)
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('admin.index') }}">Users</a>
+                        </li>
+                    @endif
                 </ul>
             </div>
         </div>

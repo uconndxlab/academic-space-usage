@@ -4,11 +4,18 @@
     "description": "The skeleton application for the Laravel framework.",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
+    "repositories": {
+        "uconn-cas": {
+            "type": "vcs",
+            "url": "https://github.com/uconndxlab/laravel-cas"
+        }
+    },
     "require": {
         "php": "^8.2",
         "laravel/framework": "^11.9",
         "laravel/tinker": "^2.9",
-        "league/csv": "^9.16"
+        "league/csv": "^9.16",
+        "uconndxlab/laravel-cas": "dev-master"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
