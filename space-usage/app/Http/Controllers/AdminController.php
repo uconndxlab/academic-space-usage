@@ -64,4 +64,14 @@ class AdminController
         $user->save();
         return redirect()->route('admin.index')->with('success', 'User made admin successfully');
     }
+
+    public function removeAdmin($id){
+        if(!Auth::user()->isAdmin) {
+            return redirect()->route('invalidLogin');
+        }
+        $user = User::find($id);
+        $user->isAdmin = false;
+        $user->save();
+        return redirect()->route('admin.index')->with('success', 'User removed admin successfully');
+    }
 }   
