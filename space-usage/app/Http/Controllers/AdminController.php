@@ -28,13 +28,19 @@ class AdminController
             'isAdmin' => 'required|boolean',
         ]);
         
-        // Create or update the user
-        $user = User::updateOrCreate(
-            ['netID' => $request->netID],
-            ['isAdmin' => $request->isAdmin]
-        );
+        // Check if user already exists
+        $existingUser = User::where('netID', $request->netID)->first();
         
-        return redirect()->route('admin.index')->with('success', 'User added/updated successfully');
+        if($existingUser) {
+            return redirect()->route('admin.index')->with('error', 'User already exists');
+        }
+        
+        $user = User::create([
+            'netID' => $request->netID,
+            'isAdmin' => $request->isAdmin
+        ]);
+        
+        return redirect()->route('admin.index')->with('success', 'User added successfully');
     }
 
     public function removeUser($id){
@@ -47,5 +53,15 @@ class AdminController
         }
         $user->delete();
         return redirect()->route('admin.index')->with('success', 'User removed successfully');
+    }
+
+    public function makeAdmin($id){
+        if(!Auth::user()->isAdmin) {
+            return redirect()->route('invalidLogin');
+        }
+        $user = User::find($id);
+        $user->isAdmin = true;
+        $user->save();
+        return redirect()->route('admin.index')->with('success', 'User made admin successfully');
     }
 }   

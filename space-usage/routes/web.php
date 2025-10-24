@@ -40,6 +40,8 @@ Route::middleware('cas.auth')->group(function () {
     Route::post('/admin', [AdminController::class, 'addUser'])->name('admin.addUser');
     Route::delete('/admin/{id}', [AdminController::class, 'removeUser'])->name('admin.removeUser');
     Route::delete('/admin/{id}/remove', [AdminController::class, 'removeUserForm'])->name('admin.removeUserForm');
+    Route::put('/admin/{id}/makeAdmin', [AdminController::class, 'makeAdmin'])->name('admin.makeAdmin');
+    Route::put('/admin/{id}/removeAdmin', [AdminController::class, 'removeAdmin'])->name('admin.removeAdmin');
 });
 
 Route::get('/invalidLogin', function () {

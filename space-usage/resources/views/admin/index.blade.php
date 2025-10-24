@@ -7,6 +7,10 @@
         <div class="alert alert-success">
             {{ session('success') }}
         </div>
+    @elseif(session('error'))
+        <div class="alert alert-danger">
+            {{ session('error') }}
+        </div>
     @endif
     <div class="card mb-4">
         <div class="card-header">Add New User</div>
@@ -34,12 +38,17 @@
                 <th>NetID</th>
                 <th>Is Admin</th>
                 <th>Remove</th>
+                <th>Make/Remove Admin</th>
             </tr>
         </thead>
         <tbody>
         @foreach($users as $user)
             <tr>
-                <td>{{ $user->netID }}</td>
+                <td>
+                    {{ $user->netID}}
+                    @if(Auth::user()->id === $user->id)<span>(me)</span>@endif
+                </td>
+                
                 <td>{{ $user->isAdmin ? 'Admin' : 'User' }}</td>
                 
                 <td>
@@ -48,6 +57,21 @@
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                    @endif
+                </td>
+                <td>
+                    @if(!$user->isAdmin && Auth::user()->id !== $user->id)
+                    <form method="POST" action="{{ route('admin.makeAdmin', $user->id) }}" class="me-3 mb-0">
+                        @csrf
+                        @method('PUT')
+                        <button type="submit" class="btn btn-primary btn-sm">Make Admin</button>
+                    </form>
+                    @elseif(Auth::user()->id !== $user->id)
+                    <form method="POST" action="{{ route('admin.removeAdmin', $user->id) }}" class="me-3 mb-0">
+                        @csrf
+                        @method('PUT')
+                        <button type="submit" class="btn btn-danger btn-sm">Remove Admin</button>
                     </form>
                     @endif
                 </td>
