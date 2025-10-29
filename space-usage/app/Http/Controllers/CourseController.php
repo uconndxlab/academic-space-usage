@@ -17,31 +17,33 @@ class CourseController
         $facilityTypes = Room::select('sa_facility_type')->distinct()->pluck('sa_facility_type')->sort();
         $campuses = Campus::orderBy('name')->get();
     
-        // Query sections with relationships
-        $sections = Section::query()->with(['course', 'room', 'room.building']);
+        // Check if all three filters are provided
+        $hasAllFilters = request()->has('department') && request()->has('campus') && request()->has('sa_facility_type') 
+            && request('department') !== '' && request('campus') !== '' && request('sa_facility_type') !== '';
     
-        if (request('campus')) {
+        $courses = collect(); // Empty collection by default
+    
+        if ($hasAllFilters) {
+            // Query sections with relationships
+            $sections = Section::query()->with(['course', 'room', 'room.building']);
+        
+            // Apply all three required filters
             $campus = Campus::find(request('campus'));
             $sections->whereHas('room', function ($query) use ($campus) {
                 $query->where('campus_id', $campus->id);
             });
-        }
-    
-        if (request('sa_facility_type')) {
+        
             $sections->whereHas('room', function ($query) {
                 $query->where('sa_facility_type', request('sa_facility_type'));
             });
-        }
-    
-        if (request('department')) {
+        
             $sections->whereHas('course', function ($query) {
                 $query->where('subject_code', request('department'));
             });
-        }
-    
-        // Get filtered sections and group them by course
-        $filteredSections = $sections->get();
-        $courses = $filteredSections->groupBy('course_id')->map(function ($sections) {
+        
+            // Get filtered sections and group them by course
+            $filteredSections = $sections->get();
+            $courses = $filteredSections->groupBy('course_id')->map(function ($sections) {
             $course = $sections->first()->course;
     
             $course->total_enrollment = $sections->sum('day10_enrol');
@@ -65,7 +67,8 @@ class CourseController
             $course->delta = $course->rooms_used - $course->rooms_needed;
     
             return $course;
-        })->values(); // Reset array keys
+            })->values(); // Reset array keys
+        }
     
         return view('courses.index', compact('courses', 'departments', 'campuses', 'facilityTypes'));
     }

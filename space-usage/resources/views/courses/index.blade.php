@@ -6,11 +6,11 @@
 
         <!-- filter by department -- select box of all the unique departments -->
         <div class="mb-4">
-            <form method="GET" action="{{ route('courses.index') }}">
+            <form method="GET" action="{{ route('courses.index') }}" id="filterForm">
                 <div class="form-group">
-                    <label for="departmentFilter" class="form-label">Filter by Department</label>
-                    <select name="department" id="departmentFilter" class="form-select">
-                        <option value="">All Departments</option>
+                    <label for="departmentFilter" class="form-label">Filter by Department <span class="text-danger">*</span></label>
+                    <select name="department" id="departmentFilter" class="form-select" required>
+                        <option value="">-- Select Department --</option>
                         @foreach ($departments as $department)
                             <option @selected($department == request('department')) value="{{ $department }}">{{ $department }}</option>
                         @endforeach
@@ -18,9 +18,9 @@
                 </div>
 
                 <div class="form-group mt-3">
-                    <label for="campusFilter" class="form-label">Filter by Campus</label>
-                    <select name="campus" id="campusFilter" class="form-select">
-                        <option value="">All Campuses</option>
+                    <label for="campusFilter" class="form-label">Filter by Campus <span class="text-danger">*</span></label>
+                    <select name="campus" id="campusFilter" class="form-select" required>
+                        <option value="">-- Select Campus --</option>
                         @foreach ($campuses as $campus)
                             <option @selected($campus->id == request('campus')) value="{{ $campus->id }}">{{ $campus->name }}</option>
                         @endforeach
@@ -29,9 +29,9 @@
 
                 {{-- dropdown of all SA_Facility_Types --}}
                 <div class="form-group mt-3">
-                    <label for="facilityTypeFilter" class="form-label">Filter by Facility Type</label>
-                    <select name="sa_facility_type" id="facilityTypeFilter" class="form-select">
-                        <option value="">All Facility Types</option>
+                    <label for="facilityTypeFilter" class="form-label">Filter by Facility Type <span class="text-danger">*</span></label>
+                    <select name="sa_facility_type" id="facilityTypeFilter" class="form-select" required>
+                        <option value="">-- Select Facility Type --</option>
                         @foreach ($facilityTypes as $facilityType)
                             <option @selected($facilityType == request('sa_facility_type')) value="{{ $facilityType }}">{{ $facilityType }}</option>
                         @endforeach
@@ -45,99 +45,28 @@
 
         </div>
 
+        @php
+            $hasAllFilters = request()->has('department') && request()->has('campus') && request()->has('sa_facility_type') 
+                && request('department') !== '' && request('campus') !== '' && request('sa_facility_type') !== '';
+        @endphp
+
+        @if($hasAllFilters)
         <div id="results">
-            <!-- Tabs navigation -->
-            <ul class="nav nav-tabs" id="courseTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="current-tab" data-bs-toggle="tab" data-bs-target="#current"
-                        type="button" role="tab" aria-controls="current" aria-selected="true">Current
-                        Information</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="forecast-tab" data-bs-toggle="tab" data-bs-target="#forecast"
-                        type="button" role="tab" aria-controls="forecast" aria-selected="false">Forecast
-                        Tools</button>
-                </li>
-            </ul>
-
-            <!-- Tabs content -->
-            <div class="tab-content" id="courseTabsContent">
-                <!-- Current Information Tab -->
-                <div class="tab-pane fade show active" id="current" role="tabpanel" aria-labelledby="current-tab">
-                    <div class="card mt-4">
-                        <div class="card-body">
-
-                            @if ($courses->isEmpty())
-                                <p>No courses available.</p>
-                            @else
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <div>
-                                      Showing {{ $courses->count() }} Courses
-                                    </div>
-
-                                </div>
-                            @endif
-
-                            <div class="table-responsive">
-                            <table class="table table-hover table-sm">
-                                <thead>
-                                    <tr class="table-primary">
-                                        <th data-sort="text">Course<br>Name</th>
-                                        <th data-sort="numeric">Enrollment</th>
-                                        <th data-sort="numeric">Sections</th>
-                                        <th data-sort="numeric">Rooms</th>
-                                        <th data-sort="numeric">Capacity</th>
-                                        <th data-sort="numeric">WSCH</th>
-                                        <th data-sort="numeric">Avg/<br>Section</th>
-                                        <th data-sort="numeric">WSCH<br>Bench</th>
-                                        <th data-sort="numeric">Rooms<br>Req</th>
-                                        <th data-sort="numeric">Delta</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($courses as $course)
-                                        <tr class="table-course">
-                                            <td>
-                                                <a href="{{ route('courses.show', $course->id) }}?campus_id={{ request('campus') }}&sa_facility_type={{ request('sa_facility_type') }}">
-                                                    {{ $course->subject_code }} {{ $course->catalog_number }}
-                                                </a>
-                                            </td>
-                                            <td>{{ $course->total_enrollment }}</td>
-                                            <td>{{ $course->sections_count }}</td>
-                                            <td>{{ $course->rooms_used }}</td>
-                                            <td>{{ $course->total_capacity }}</td>
-                                            <td>{{ $course->total_wsch }}</td>
-                                            <td>{{ $course->sections_count > 0 ? number_format($course->total_enrollment / $course->sections_count, 2) : '0.00' }}</td>
-                                            <td>{{ $course->wsch_benchmark }}</td>
-                                            <td>{{ $course->rooms_needed }}</td>
-                                            <td class="{{ $course->delta < 0 ? 'bg-danger' : '' }}">{{ $course->delta }}
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                            </div>
-
-
-
-                        </div>
+            <div class="card mt-4">
+                <div class="card-body">
+                    <!-- Enrollment Increase Input -->
+                    <div class="mb-3">
+                        <label for="enrollmentIncrease" class="form-label">Enrollment Increase (%)</label>
+                        <input type="number" id="enrollmentIncrease" class="form-control" value="0" min="0"
+                            max="100" step="1">
                     </div>
-                </div>
-            </div>
 
-            <div class="tab-pane fade" id="forecast" role="tabpanel" aria-labelledby="forecast-tab">
-                <div class="card mt-4">
-                    <div class="card-body">
-                        <!-- Enrollment Increase Input -->
-                        <div class="mb-3">
-                            <label for="enrollmentIncrease" class="form-label">Enrollment Increase (%)</label>
-                            <input type="number" id="enrollmentIncrease" class="form-control" value="0" min="0"
-                                max="100" step="1">
-                        </div>
-
-                        <!-- Forecast Table -->
-                        <div class="table-responsive">
-                        <table class="table table-striped table-hover table-sm">
+                    @if ($courses->isEmpty())
+                        <p>No courses available.</p>
+                    @else
+                    <!-- Forecast Table -->
+                    <div class="table-responsive">
+                    <table class="table table-striped table-hover table-sm">
                             <thead style="position: sticky; top: 0;">
                                 <tr class="table-primary">
                                     <th scope="col" data-sort="text">Course</th>
@@ -228,8 +157,8 @@
                                 @endforeach
                             </tbody>
                         </table>
-                        </div>
                     </div>
+                    @endif
                 </div>
             </div>
 
@@ -432,6 +361,16 @@
 
 
         </div>
+        @else
+        <div class="alert alert-info mt-4" role="alert">
+            <strong>Please select all filters above and click "Filter" to view course data.</strong>
+            <ul class="mt-2 mb-0">
+                <li>Department</li>
+                <li>Campus</li>
+                <li>Facility Type</li>
+            </ul>
+        </div>
+        @endif
     </div>
 
 
