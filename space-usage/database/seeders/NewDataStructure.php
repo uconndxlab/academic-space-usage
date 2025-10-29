@@ -11,339 +11,254 @@ use App\Models\Course;
 use App\Models\Section;
 use App\Models\Campus;
 
-// new origianl data structure is as follows:
-
 /**
- * 
- * Term_Code	!
- * Subject_Code	!
- * Division	!
- * Catalog_Number	!
- * Section	!
- * Component_Code	!
- * Class_NBR	
- * CLASS_DESCR	!
- * Day10_Enroll	!
- * class_duration_weekly	!
- * Enrl_Cap	!
- * Instruction_Mode	
- * TL_Building	
- * TL_Room	
- * SA Facility ID	
- * SA Building Code	
- * SA Building Description	
- * SA Building Short Description	
- * SA Facility Room Number	
- * SA Facility Description	
- * SA Facility Short Description	
- * SA Facility Location	
- * SA Facility Academic Organization	
- * SA Facility Type	
- * SA Facility Capacity	
- * Class_Start_Time	
- * Class_End_Time	
- * Class_Days	
- * AGNROther	Accounting	AfricanaStudiesIns	AgriculturalResour	AlliedHealthScienc	AnimalScience	Anthropology	ArtArtHistory	BUSNOther	BiologicalSciences	BiomedicalEngineer	CenterforExcellenc	ChemicalBiomolecul	Chemistry	CivilEnvironmental	CognitiveScience	Communication	Computing	CurriculumInstruct	DigitalMediaDesign	DramaticArts	ENGROther	EarthSciences	EcologyEvolutionar	Economics	EducationalLeaders	EducationalPsychol	ElectricalComputer	EngineeringPhysics	English	Exploratory	Finance	GeographySustainab	History	HumanDevelopmentFa	HumanRights	Individualized	InstituteforSystem	Interdisciplinary	InternationalStudi	Journalism	Kinesiology	LatinoLatinAmerica	Law	Linguistics	LiteraturesCulture	Management	MarineSciences	MaritimeStudies	Marketing	MaterialsScienceEn	Mathematics	MechanicalAerospac	MolecularCellBiolo	Music	NaturalResourcesth	NonDegree	Nursing	NutritionalScience	OfficeofEnrichment	OperationsInformat	PathobiologyVeteri	PharmaceuticalScie	PharmacyPractice	Philosophy	Physics	PhysiologyNeurobio	PlantScienceLandsc	PoliticalScience	PolymerSciencePhD	PreBachelorofSocia	PreIndividualized	PrePharmacy	PreSportManagement	PreTeaching	PsychologicalScien	PublicPolicy	RoboticsEngineerin	SocialCriticalInqu	SocialWork	Sociology	SpeechLanguageHear	StatisticalDataSci	Statistics	UConnHealthOther	Sum_Enrollment
+ * New CSV format columns:
+ * CTERM_TERM_CD, Term, Acad_Year, Class_Subject_Code, Class_Catalog_NBR, Class_Section,
+ * Class_Component_Code, Day10_Enroll, Enrollment_Cap, Building_Code, Room, Room_Type_Code,
+ * Room_Capacity, Class_Days, Class_Duration, Class_Start_Time, Class_End_Time, Class_Campus,
+ * Short_Class_Description, Course_Description, Class_Academic_Career, etc.
  */
-
-
 class NewDataStructure extends Seeder
 {
     public function run()
     {
         // Read the CSV file
         $file = fopen(database_path('new_data.csv'), 'r');
+        if (!$file) {
+            throw new \Exception('Could not open new_data.csv file');
+        }
+
         $headers = fgetcsv($file);
+        if (!$headers) {
+            fclose($file);
+            throw new \Exception('Could not read CSV headers');
+        }
+
+        $rowCount = 0;
+        $processedCount = 0;
+        $skippedYear = 0;
+        $skippedRoomCapacity = 0;
+        $skippedNoRoom = 0;
+        $skippedMissingFields = 0;
+
+        echo "Starting to read CSV file...\n";
+        echo "Headers found: " . count($headers) . " columns\n";
 
         // Map CSV headers to the corresponding model attributes
         while ($row = fgetcsv($file)) {
+            $rowCount++;
+            
+            // Skip if row is shorter than headers (handles malformed rows)
+            if (count($row) < count($headers)) {
+                // Pad with empty strings to match header count
+                $row = array_pad($row, count($headers), '');
+            }
+            
             $data = array_combine($headers, $row);
+            
+            if (!$data) {
+                continue; // Skip rows that can't be combined
+            }
 
-            if ($data['SA Facility Capacity'] == 0 || $data['SA Facility Capacity'] == null) {
+            // Skip data older than 2023
+            $acadYear = trim($data['Acad_Year'] ?? '');
+            if (empty($acadYear) || (int)$acadYear < 2023) {
+                $skippedYear++;
+                if ($rowCount <= 10) {
+                    echo "Row {$rowCount}: Skipped - Acad_Year: '{$acadYear}' (< 2023)\n";
+                }
                 continue;
             }
 
-            // Handle Term
-            $term = Term::firstOrCreate(
-                ['term_code' => $data['Term_Code']],
-                ['term_descr' => 'Fall 2024']
-            );
+            // Get room information
+            $roomCapacity = trim($data['Room_Capacity'] ?? '');
+            $buildingCode = trim($data['Building_Code'] ?? '');
+            $room = trim($data['Room'] ?? '');
 
-            // Handle Building
-            $building = Building::firstOrCreate(
-                ['building_code' => $data['SA Building Code']],
-                ['description' => $data['SA Building Description'],
-                    'type' => $data['SA Facility Type'],
-                ]
-                
-            );
-
-// ACTV	Special
-// ARTG	Special
-// AUD	    Classroom
-// CLIN	LAB
-// CMLB	LAB
-// CMPL	LAB
-// CONF	Classroom
-// CRTR	Special
-// CSRA	Classroom
-// CSRM	Classroom
-// GENP	Special
-// LAB	    LAB
-// LNGE	Special
-// LVST	Special
-// MCHS	Special
-// MULT	Special
-// MUSI	Special
-// NRR	    NO ROOM
-// RSRC	Special 
-
-switch ($data['SA Facility Type']) {
-    case 'ACTV':
-        $data['SA Facility Type'] = 'Special';
-    break;
-
-    case 'ARTG':
-        $data['SA Facility Type'] = 'Special';
-    break;
-
-    case 'AUD':
-        $data['SA Facility Type'] = 'Classroom';
-    break;
-
-    case 'CLIN':
-        $data['SA Facility Type'] = 'LAB';
-    break;
-
-    case 'CMLB':
-        $data['SA Facility Type'] = 'LAB';
-    break;
-
-    case 'CMPL':
-        $data['SA Facility Type'] = 'LAB';
-    break;
-
-    case 'CONF':
-        $data['SA Facility Type'] = 'Classroom';
-    break;
-
-    case 'CRTR':
-        $data['SA Facility Type'] = 'Special';
-    break;
-
-    case 'CSRA':
-        $data['SA Facility Type'] = 'Classroom';
-    break;
-
-    case 'CSRM':
-        $data['SA Facility Type'] = 'Classroom';
-    break;
-
-    case 'GENP':
-        $data['SA Facility Type'] = 'Special';
-    break;
-
-    case 'LAB':
-        $data['SA Facility Type'] = 'LAB';
-    break;
-
-    case 'LNGE':
-        $data['SA Facility Type'] = 'Special';
-    break;
-
-    case 'LVST':
-        $data['SA Facility Type'] = 'Special';
-    break;
-
-    case 'MCHS':
-        $data['SA Facility Type'] = 'Special';
-    break;
-
-    case 'MULT':
-        $data['SA Facility Type'] = 'Special';
-    break;
-
-    case 'MUSI':
-        $data['SA Facility Type'] = 'Special';
-    break;
-
-    case 'NRR':
-        $data['SA Facility Type'] = 'NO ROOM';
-    break;
-
-    case 'RSRC':
-        $data['SA Facility Type'] = 'Special';
-    break;
-
-    default:
-        
-    break;
-}
-
-            // Handle Room
-            $room = Room::firstOrCreate(
-                ['building_id' => $building->id, 'room_number' => $data['SA Facility Room Number']],
-                ['capacity' => $data['SA Facility Capacity'], 'room_description' => $data['SA Facility Description'],
-                    'sa_facility_type' => $data['SA Facility Type'],
-                ]
-            );
-
-
-            // if it's null just use 0 
-            if ($data['class_duration_weekly'] == null) {
-                $data['duration_minutes'] = 0;
-            } else {
-                            // class_duration weekly is in H:MM format, we need to convert it to minutes
-            $data['duration_minutes'] = (int)explode(':', $data['class_duration_weekly'])[0] * 60 + (int)explode(':', $data['class_duration_weekly'])[1];
-            // print out the duration_minutes to the console
-            echo $data['duration_minutes'] . "(Course: " . $data['Subject_Code'] . " " . $data['Catalog_Number'] . ")\n";
-
-            }
-            // Handle Course
-            $course = Course::firstOrCreate(
-                [
-                    'subject_code' => $data['Subject_Code'],
-                    'catalog_number' => $data['Catalog_Number'],
-                    'term_id' => $term->id,
-                ],
-                [
-                    'class_descr' => $data['CLASS_DESCR'],
-                    'wsch_max' => 'wsch_max',
-                    'term_id' => $term->id,
-                    'class_duration_weekly' => $data['class_duration_weekly'],
-                    'duration_minutes' => $data['duration_minutes'],
-                    'division' => $data['Division'],
-                ]
-            );
-
-            // AGNROther	Accounting	AfricanaStudiesIns	AgriculturalResour	AlliedHealthScienc	AnimalScience	Anthropology	ArtArtHistory	BUSNOther	BiologicalSciences	BiomedicalEngineer	CenterforExcellenc	ChemicalBiomolecul	Chemistry	CivilEnvironmental	CognitiveScience	Communication	Computing	CurriculumInstruct	DigitalMediaDesign	DramaticArts	ENGROther	EarthSciences	EcologyEvolutionar	Economics	EducationalLeaders	EducationalPsychol	ElectricalComputer	EngineeringPhysics	English	Exploratory	Finance	GeographySustainab	History	HumanDevelopmentFa	HumanRights	Individualized	InstituteforSystem	Interdisciplinary	InternationalStudi	Journalism	Kinesiology	LatinoLatinAmerica	Law	Linguistics	LiteraturesCulture	Management	MarineSciences	MaritimeStudies	Marketing	MaterialsScienceEn	Mathematics	MechanicalAerospac	MolecularCellBiolo	Music	NaturalResourcesth	NonDegree	Nursing	NutritionalScience	OfficeofEnrichment	OperationsInformat	PathobiologyVeteri	PharmaceuticalScie	PharmacyPractice	Philosophy	Physics	PhysiologyNeurobio	PlantScienceLandsc	PoliticalScience	PolymerSciencePhD	PreBachelorofSocia	PreIndividualized	PrePharmacy	PreSportManagement	PreTeaching	PsychologicalScien	PublicPolicy	RoboticsEngineerin	SocialCriticalInqu	SocialWork	Sociology	SpeechLanguageHear	StatisticalDataSci	Statistics	UConnHealthOther
-
-
-            $departmentColumns = [
-                'AGNROther',
-                'Accounting',
-                'AfricanaStudiesIns',
-                'AgriculturalResour',
-                'AlliedHealthScienc',
-                'AnimalScience',
-                'Anthropology',
-                'ArtArtHistory',
-                'BUSNOther',
-                'BiologicalSciences',
-                'BiomedicalEngineer',
-                'CenterforExcellenc',
-                'ChemicalBiomolecul',
-                'Chemistry',
-                'CivilEnvironmental',
-                'CognitiveScience',
-                'Communication',
-                'Computing',
-                'CurriculumInstruct',
-                'DigitalMediaDesign',
-                'DramaticArts',
-                'ENGROther',
-                'EarthSciences',
-                'EcologyEvolutionar',
-                'Economics',
-                'EducationalLeaders',
-                'EducationalPsychol',
-                'ElectricalComputer',
-                'EngineeringPhysics',
-                'English',
-                'Exploratory',
-                'Finance',
-                'GeographySustainab',
-                'History',
-                'HumanDevelopmentFa',
-                'HumanRights',
-                'Individualized',
-                'InstituteforSystem',
-                'Interdisciplinary',
-                'InternationalStudi',
-                'Journalism',
-                'Kinesiology',
-                'LatinoLatinAmerica',
-                'Law',
-                'Linguistics',
-                'LiteraturesCulture',
-                'Management',
-                'MarineSciences',
-                'MaritimeStudies',
-                'Marketing',
-                'MaterialsScienceEn',
-                'Mathematics',
-                'MechanicalAerospac',
-                'MolecularCellBiolo',
-                'Music',
-                'NaturalResourcesth',
-                'NonDegree',
-                'Nursing',
-                'NutritionalScience',
-                'OfficeofEnrichment',
-                'OperationsInformat',
-                'PathobiologyVeteri',
-                'PharmaceuticalScie',
-                'PharmacyPractice',
-                'Philosophy',
-                'Physics',
-                'PhysiologyNeurobio',
-                'PlantScienceLandsc',
-                'PoliticalScience',
-                'PolymerSciencePhD',
-                'PreBachelorofSocia',
-                'PreIndividualized',
-                'PrePharmacy',
-                'PreSportManagement',
-                'PreTeaching',
-                'PsychologicalScien',
-                'PublicPolicy',
-                'RoboticsEngineerin',
-                'SocialCriticalInqu',
-                'SocialWork',
-                'Sociology',
-                'SpeechLanguageHear',
-                'StatisticalDataSci',
-                'Statistics',
-                'UConnHealthOther'
-            ];
-
-            $enrollments_by_dept = [];
-
-            foreach ($departmentColumns as $column) {
-                $enrollments_by_dept[$column] = $data[$column];
+            // Skip if room capacity is 0, null, or empty (need at least some room info)
+            if (empty($roomCapacity) || (int)$roomCapacity == 0) {
+                $skippedRoomCapacity++;
+                if ($processedCount == 0 && $skippedRoomCapacity <= 5) {
+                    echo "Row {$rowCount}: Skipped - Room_Capacity: '{$roomCapacity}'\n";
+                }
+                continue;
             }
 
-            // Handle Section
-           $section = Section::create([
-                'section_number' => $data['Section'],
-                'course_id' => $course->id,
-                'enrol_cap' => $data['Enrl_Cap'],
-                'day10_enrol' => $data['Day10_Enroll'],
-                'component_code' => $data['Component_Code'],
-                'start_time' => $data['Class_Start_Time'],
-                'end_time' => $data['Class_End_Time'],
-                'days' => $data['Class_Days'],
-                'room_id' => $room->id,
-                'enrollments_by_dept' => json_encode($enrollments_by_dept),
-            ]);
+            // Skip if building or room is missing (only process rows with room assignments)
+            if (empty($buildingCode) || empty($room)) {
+                $skippedNoRoom++;
+                if ($processedCount == 0 && $skippedNoRoom <= 5) {
+                    echo "Row {$rowCount}: Skipped - Building: '{$buildingCode}', Room: '{$room}'\n";
+                }
+                continue;
+            }
 
-
+            // Skip if required course fields are missing
+            $subjectCode = trim($data['Class_Subject_Code'] ?? '');
+            $catalogNumber = trim($data['Class_Catalog_NBR'] ?? '');
+            $termCode = trim($data['CTERM_TERM_CD'] ?? '');
             
+            if (empty($subjectCode) || empty($catalogNumber) || empty($termCode)) {
+                $skippedMissingFields++;
+                if ($processedCount == 0 && $skippedMissingFields <= 5) {
+                    echo "Row {$rowCount}: Skipped - Missing required fields (Subject: '{$subjectCode}', Catalog: '{$catalogNumber}', Term: '{$termCode}')\n";
+                }
+                continue;
+            }
+            
+            if ($processedCount == 0) {
+                echo "Row {$rowCount}: Processing - Acad_Year: {$acadYear}, Subject: {$subjectCode}, Catalog: {$catalogNumber}, Building: {$buildingCode}, Room: {$room}\n";
+            }
 
+            try {
+                // Handle Term
+                $term = Term::firstOrCreate(
+                    ['term_code' => $termCode],
+                    ['term_descr' => trim($data['Term'] ?? 'Unknown')]
+                );
 
-            $course->save();
+                // Map Room_Type_Code to facility type
+                $roomTypeCode = trim($data['Room_Type_Code'] ?? '');
+                $facilityType = $this->mapRoomTypeToFacilityType($roomTypeCode);
 
-            // Handle Campus
-            $campus = Campus::firstOrCreate(
-                ['name' => $data['SA Facility Location']]
-            );
+                // Handle Building
+                $building = Building::firstOrCreate(
+                    ['building_code' => $buildingCode],
+                    [
+                        'description' => $buildingCode,
+                        'type' => $facilityType,
+                    ]
+                );
 
-            $section->campus()->associate($campus);
-            $section->save();
+                // Handle Room
+                $roomModel = Room::firstOrCreate(
+                    ['building_id' => $building->id, 'room_number' => $room],
+                    [
+                        'capacity' => (int)$roomCapacity,
+                        'room_description' => $room,
+                        'sa_facility_type' => $facilityType,
+                    ]
+                );
 
+                // Handle duration conversion
+                $durationMinutes = 0;
+                $classDurationWeekly = trim($data['Class_Duration'] ?? '');
+                
+                if (!empty($classDurationWeekly)) {
+                    // Check if duration is already in minutes (numeric) or in H:MM format
+                    if (strpos($classDurationWeekly, ':') !== false) {
+                        // Format is H:MM, convert to minutes
+                        $parts = explode(':', $classDurationWeekly);
+                        $durationMinutes = (int)$parts[0] * 60 + (int)($parts[1] ?? 0);
+                    } else {
+                        // Assume it's already in minutes
+                        $durationMinutes = (int)$classDurationWeekly;
+                    }
+                }
 
+                // Get class description
+                $classDescr = trim($data['Short_Class_Description'] ?? '');
+                if (empty($classDescr)) {
+                    $classDescr = trim($data['Course_Description'] ?? '');
+                }
+
+                // Handle Course
+                $course = Course::firstOrCreate(
+                    [
+                        'subject_code' => $subjectCode,
+                        'catalog_number' => $catalogNumber,
+                        'term_id' => $term->id,
+                    ],
+                    [
+                        'class_descr' => $classDescr,
+                        'wsch_max' => 'wsch_max',
+                        'term_id' => $term->id,
+                        'class_duration_weekly' => $classDurationWeekly ?: null,
+                        'duration_minutes' => $durationMinutes,
+                        'division' => trim($data['Class_Academic_Career'] ?? ''),
+                    ]
+                );
+
+                // No department enrollment columns in new format, set to empty array
+                $enrollments_by_dept = [];
+
+                // Handle Section
+                $section = Section::create([
+                    'section_number' => trim($data['Class_Section'] ?? ''),
+                    'course_id' => $course->id,
+                    'enrol_cap' => (int)($data['Enrollment_Cap'] ?? 0),
+                    'day10_enrol' => (int)($data['Day10_Enroll'] ?? 0),
+                    'component_code' => trim($data['Class_Component_Code'] ?? ''),
+                    'start_time' => trim($data['Class_Start_Time'] ?? ''),
+                    'end_time' => trim($data['Class_End_Time'] ?? ''),
+                    'days' => trim($data['Class_Days'] ?? ''),
+                    'room_id' => $roomModel->id,
+                    'enrollments_by_dept' => json_encode($enrollments_by_dept),
+                ]);
+
+                // Handle Campus
+                $campusName = trim($data['Class_Campus'] ?? '');
+                if (!empty($campusName)) {
+                    $campus = Campus::firstOrCreate(
+                        ['name' => $campusName]
+                    );
+
+                    $section->campus()->associate($campus);
+                    $section->save();
+                }
+
+                $processedCount++;
+                
+                if ($processedCount % 100 == 0) {
+                    echo "Processed {$processedCount} rows...\n";
+                }
+            } catch (\Exception $e) {
+                // Log error but continue processing
+                echo "Error processing row {$rowCount}: " . $e->getMessage() . "\n";
+                echo "Subject: {$subjectCode}, Catalog: {$catalogNumber}, Term: {$termCode}\n";
+                continue;
+            }
         }
 
         fclose($file);
+        echo "\n=== Summary ===\n";
+        echo "Total rows read: {$rowCount}\n";
+        echo "Rows processed: {$processedCount}\n";
+        echo "Skipped - Year < 2023: {$skippedYear}\n";
+        echo "Skipped - No room capacity: {$skippedRoomCapacity}\n";
+        echo "Skipped - No building/room: {$skippedNoRoom}\n";
+        echo "Skipped - Missing required fields: {$skippedMissingFields}\n";
+    }
+
+    /**
+     * Map Room_Type_Code to facility type
+     */
+    private function mapRoomTypeToFacilityType($roomTypeCode)
+    {
+        $mapping = [
+            'ACTV' => 'Special',
+            'ARTG' => 'Special',
+            'AUD' => 'Classroom',
+            'CLIN' => 'LAB',
+            'CMLB' => 'LAB',
+            'CMPL' => 'LAB',
+            'CONF' => 'Classroom',
+            'CRTR' => 'Special',
+            'CSRA' => 'Classroom',
+            'CSRM' => 'Classroom',
+            'GENP' => 'Special',
+            'LAB' => 'LAB',
+            'LNGE' => 'Special',
+            'LVST' => 'Special',
+            'MCHS' => 'Special',
+            'MULT' => 'Special',
+            'MUSI' => 'Special',
+            'NRR' => 'NO ROOM',
+            'RSRC' => 'Special',
+            'PHYL' => 'LAB', // Physics Lab
+            'HTEC' => 'Classroom', // High Tech Classroom
+        ];
+
+        return $mapping[$roomTypeCode] ?? $roomTypeCode;
     }
 }
