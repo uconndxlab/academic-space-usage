@@ -10,7 +10,7 @@ class User extends Authenticatable
 {
     use HasFactory;
 
-    protected $fillable = ['netID'];
+    protected $fillable = ['netID', 'isAdmin'];
 
     protected function casts()
     {

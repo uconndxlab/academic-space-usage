@@ -25,7 +25,7 @@ class AdminController
 
         $request->validate([
             'netID' => 'required|string|max:255',
-            'isAdmin' => 'required|boolean',
+            'isAdmin' => 'nullable',
         ]);
         
         // Check if user already exists
@@ -35,9 +35,17 @@ class AdminController
             return redirect()->route('admin.index')->with('error', 'User already exists');
         }
         
+        $isAdminValue = $request->input('isAdmin');
+        $isAdmin = false;
+        if (is_array($isAdminValue)) {
+            $isAdmin = in_array('1', $isAdminValue);
+        } else {
+            $isAdmin = $request->boolean('isAdmin');
+        }
+        
         $user = User::create([
             'netID' => $request->netID,
-            'isAdmin' => $request->isAdmin
+            'isAdmin' => $isAdmin
         ]);
         
         return redirect()->route('admin.index')->with('success', 'User added successfully');
