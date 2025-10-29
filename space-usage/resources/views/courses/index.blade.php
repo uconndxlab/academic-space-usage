@@ -87,6 +87,7 @@
                                         <th>Rooms</th>
                                         <th>Capacity (combined)</th>
                                         <th>Total WSCH</th>
+                                        <th>Avg per Section</th>
                                         <th>WSCH Benchmark</th>
                                         <th>Rooms Needed</th>
                                         <th>Delta</th>
@@ -105,6 +106,7 @@
                                             <td>{{ $course->rooms_used }}</td>
                                             <td>{{ $course->total_capacity }}</td>
                                             <td>{{ $course->total_wsch }}</td>
+                                            <td>{{ $course->sections_count > 0 ? number_format($course->total_enrollment / $course->sections_count, 2) : '0.00' }}</td>
                                             <td>{{ $course->wsch_benchmark }}</td>
                                             <td>{{ $course->rooms_needed }}</td>
                                             <td class="{{ $course->delta < 0 ? 'bg-danger' : '' }}">{{ $course->delta }}
@@ -136,41 +138,89 @@
                             <thead style="position: sticky; top: 0;">
                                 <tr class="table-primary">
                                     <th scope="col">Course Name</th>
-                                    <th scope="col">Students Enrolled (Input)</th>
+                                    <th scope="col">Enrollment</th>
+                                    <th scope="col">Sections</th>
                                     <th scope="col">Rooms</th>
-                                    <th scope="col">WSCH (Calculated)</th>
-                                    <th scope="col">Total Capacity</th>
-                                    <th scope="col">WSCH Benchmark</th>
-                                    <th scope="col">Labs Needed (Calculated)</th>
-                                    <th scope="col" data-sort="delta" style="cursor:pointer;">Delta</th>
+                                    <th scope="col">Capacity (combined)</th>
+                                    <th scope="col">CH</th>
+                                    <th scope="col">Total WSCH</th>
+                                    <th scope="col">Average per section</th>
+                                    <th scope="col">Enroll growth</th>
+                                    <th scope="col">WSCH growth</th>
+                                    <th scope="col">Students per section</th>
+                                    <th scope="col">Seating capacity 75% utiliz</th>
+                                    <th scope="col">WSCH proposed, benchmark</th>
+                                    <th scope="col">No of rooms needed</th>
+                                    <th scope="col">Seating range</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach ($courses as $course)
-                                    <tr class="course-row table-course">
+                                    @php
+                                        $avg_per_section = $course->sections_count > 0 ? $course->total_enrollment / $course->sections_count : 0;
+                                        $enroll_growth = $course->total_enrollment;
+                                        $wsch_growth = ceil(($enroll_growth * $course->duration_minutes) / 60);
+                                        $students_per_section = $course->sections_count > 0 ? $enroll_growth / $course->sections_count : 0;
+                                        $seating_75_util = $course->total_capacity * 0.75;
+                                        $contact_hours = $course->duration_minutes / 60;
+                                        
+                                        // This is for seating range caulation based on the
+                                        // Spread sheet formula 
+                                        // This is only done on the page load its then handled in the JS
+                                        $seating_range = 'N/A';
+                                        if ($seating_75_util > 0) {
+                                            if ($seating_75_util <= 25) {
+                                                $seating_range = '0-25';
+                                            } elseif ($seating_75_util <= 49) {
+                                                $seating_range = '26-49';
+                                            } elseif ($seating_75_util <= 74) {
+                                                $seating_range = '50-74';
+                                            } elseif ($seating_75_util <= 124) {
+                                                $seating_range = '75-124';
+                                            } elseif ($seating_75_util <= 174) {
+                                                $seating_range = '125-174';
+                                            } elseif ($seating_75_util <= 224) {
+                                                $seating_range = '175-224';
+                                            } elseif ($seating_75_util <= 249) {
+                                                $seating_range = '225-249';
+                                            } elseif ($seating_75_util <= 299) {
+                                                $seating_range = '250-299';
+                                            } elseif ($seating_75_util <= 349) {
+                                                $seating_range = '300-349';
+                                            } elseif ($seating_75_util <= 399) {
+                                                $seating_range = '350-399';
+                                            } else {
+                                                $seating_range = '400+';
+                                            }
+                                        }
+                                    @endphp
+                                    <tr class="course-row table-course"
+                                        data-original-enrollment="{{ $course->total_enrollment }}"
+                                        data-duration-minutes="{{ $course->duration_minutes }}"
+                                        data-current-rooms="{{ $course->rooms_used }}"
+                                        data-weekly-contact-hours="{{ $course->total_wsch }}"
+                                        data-sections-count="{{ $course->sections_count }}"
+                                        data-total-capacity="{{ $course->total_capacity }}"
+                                        data-wsch-benchmark="{{ $course->wsch_benchmark }}">
                                         <td>
                                             <a href="{{ route('courses.show', $course->id) }}">
                                                 {{ $course->subject_code }} {{ $course->catalog_number }}
                                             </a>
                                         </td>
-                                        <td>
-                                            <input type="number" class="form-control forecast-students-input"
-                                                value="{{ $course->total_enrollment }}"
-                                                data-original-enrollment="{{ $course->total_enrollment }}"
-                                                data-duration-minutes = "{{ $course->duration_minutes }}"
-                                                data-current-rooms = "{{ $course->rooms_used }}"
-                                                data-weekly-contact-hours="{{ $course->total_wsch }}">
-
-                                        </td>
-                                        <td>{{ $course->rooms_used }}</td>
-
+                                        <td class="forecast-enrollment">{{ $course->total_enrollment }}</td>
+                                        <td class="forecast-sections">{{ $course->sections_count }}</td>
+                                        <td class="forecast-rooms">{{ $course->rooms_used }}</td>
+                                        <td class="forecast-capacity">{{ $course->total_capacity }}</td>
+                                        <td class="forecast-contact-hours">{{ number_format($contact_hours, 2) }}</td>
                                         <td class="forecast-wsch">{{ $course->total_wsch }}</td>
-                                        <td>{{ $course->total_capacity }}</td>
+                                        <td class="forecast-avg-per-section">{{ $course->sections_count > 0 ? number_format($avg_per_section, 2) : '0.00' }}</td>
+                                        <td class="forecast-enroll-growth">{{ number_format($enroll_growth, 0) }}</td>
+                                        <td class="forecast-wsch-growth">{{ $wsch_growth }}</td>
+                                        <td class="forecast-students-per-section">{{ $course->sections_count > 0 ? number_format($students_per_section, 2) : '0.00' }}</td>
+                                        <td class="forecast-seating-75">{{ number_format($seating_75_util, 0) }}</td>
                                         <td class="wsch-benchmark">{{ $course->wsch_benchmark }}</td>
-                                        <td class="forecast-labs-needed">{{ $course->rooms_needed }}</td>
-                                        <td class="forecast-delta {{ $course->delta < 0 ? 'bg-danger' : '' }}">
-                                            {{ $course->delta }}
-                                        </td>
+                                        <td class="forecast-labs-needed">{{ number_format($course->rooms_needed, 2) }}</td>
+                                        <td class="forecast-seating-range">{{ $seating_range }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -180,96 +230,71 @@
             </div>
 
             <script>
-                // when the enrollment increase input changes, update the forecast table 
-                // here's the php code that does the same thing
-                // $roomCapacity = optional($sections - > first() - > room) - > capacity ?? 1; // Avoid division by zero
-                // $course - > wsch_benchmark = round(28 * ($roomCapacity * 0.8), -1);
+                // handle user input updates for enrollment increase
+                function updateForecastGrowth(row, growthPercentage) {
+                    const originalEnrollment = parseFloat(row.getAttribute('data-original-enrollment'));
+                    const durationMinutes = parseFloat(row.getAttribute('data-duration-minutes'));
+                    const sectionsCount = parseFloat(row.getAttribute('data-sections-count'));
+                    const totalCapacity = parseFloat(row.getAttribute('data-total-capacity'));
+                    const wschBenchmark = parseFloat(row.getAttribute('data-wsch-benchmark'));
+                    
+                    const growthEnrollment = Math.round(originalEnrollment * (1 + growthPercentage / 100));
+                    
+                    const wschGrowth = Math.ceil((growthEnrollment * durationMinutes) / 60);
+                    const studentsPerSection = sectionsCount > 0 ? (growthEnrollment / sectionsCount).toFixed(2) : '0.00';
+                    const seating75Util = Math.round(totalCapacity * 0.75);
+                    const roomsNeeded = wschBenchmark > 0 ? (wschGrowth / wschBenchmark).toFixed(2) : '0.00';
+                    
+                    //As mentioned above this is pulled fom the xlsxx logic for seating range calculation
+                    let seatingRange = 'N/A';
+                    if (seating75Util > 0) {
+                        if (seating75Util <= 25) {
+                            seatingRange = '0-25';
+                        } else if (seating75Util <= 49) {
+                            seatingRange = '26-49';
+                        } else if (seating75Util <= 74) {
+                            seatingRange = '50-74';
+                        } else if (seating75Util <= 124) {
+                            seatingRange = '75-124';
+                        } else if (seating75Util <= 174) {
+                            seatingRange = '125-174';
+                        } else if (seating75Util <= 224) {
+                            seatingRange = '175-224';
+                        } else if (seating75Util <= 249) {
+                            seatingRange = '225-249';
+                        } else if (seating75Util <= 299) {
+                            seatingRange = '250-299';
+                        } else if (seating75Util <= 349) {
+                            seatingRange = '300-349';
+                        } else if (seating75Util <= 399) {
+                            seatingRange = '350-399';
+                        } else {
+                            seatingRange = '400+';
+                        }
+                    }
+                    
+                    row.querySelector('.forecast-enroll-growth').textContent = growthEnrollment;
+                    row.querySelector('.forecast-wsch-growth').textContent = wschGrowth;
+                    row.querySelector('.forecast-students-per-section').textContent = studentsPerSection;
+                    row.querySelector('.forecast-seating-75').textContent = seating75Util;
+                    row.querySelector('.forecast-labs-needed').textContent = roomsNeeded;
+                    row.querySelector('.forecast-seating-range').textContent = seatingRange;
+                }
 
-                // // Rooms Needed
-                // $course - > rooms_needed = round($course - > total_wsch / $course - > wsch_benchmark, 2);
+                const forecastInput = document.querySelector('#enrollmentIncrease');
+                if (forecastInput) {
+                    forecastInput.addEventListener('input', function() {
+                        const increase = parseFloat(this.value) || 0;
 
-                // attach an event listener to the enrollment increase input
-                forecastInput = document.querySelector('#enrollmentIncrease');
-                forecastInput.addEventListener('input', function() {
-                    const increase = parseFloat(this.value) / 100;
-                    console.log('Increase:', increase);
-
-                    // Update the forecast table
-                    document.querySelectorAll('.course-row').forEach(row => {
-                        const originalEnrollment = parseFloat(row.querySelector('.forecast-students-input')
-                            .getAttribute('data-original-enrollment'));
-                        const newEnrollment = originalEnrollment + (originalEnrollment * increase);
-                        console.log('New enrollment:', newEnrollment);
-
-                        row.querySelector('.forecast-students-input').value = newEnrollment;
-
-                        // Update the WSCH
-                        const weeklyContactHours = parseFloat(row.querySelector('.forecast-students-input')
-                            .getAttribute('data-weekly-contact-hours'));
-                        console.log('Weekly Contact Hours:', weeklyContactHours);
-
-                        // ceil(($course->total_enrollment * $course->duration_minutes) / 60);
-                        const course_duration_minutes = parseFloat(row.querySelector('.forecast-students-input')
-                            .getAttribute('data-duration-minutes'));
-                        const newWsch = Math.ceil((newEnrollment * course_duration_minutes) / 60);
-
-                        console.log('New WSCH:', newWsch);
-                        row.querySelector('.forecast-wsch').textContent = newWsch;
-
-                        // Update the labs needed
-                        const wschBenchmark = parseFloat(row.querySelector('.wsch-benchmark').textContent);
-                        const newLabsNeeded = (newWsch / wschBenchmark).toFixed(2);
-
-                        console.log('New labs needed:', newLabsNeeded);
-                        row.querySelector('.forecast-labs-needed').textContent = newLabsNeeded;
-
-                        // Update the delta
-                        const current_rooms = parseFloat(row.querySelector('.forecast-students-input').getAttribute(
-                            'data-current-rooms'));
-                        const delta = (current_rooms - newLabsNeeded).toFixed(2);
-                        console.log('Delta:', delta);
-                        row.querySelector('.forecast-delta').textContent = delta;
-                        row.querySelector('.forecast-delta').classList.toggle('bg-danger', delta < 0);
+                        document.querySelectorAll('.course-row').forEach(row => {
+                            updateForecastGrowth(row, increase);
+                        });
                     });
-                });
-
-                // do the same for each .forecast-students-input
-                document.querySelectorAll('.forecast-students-input').forEach(input => {
-                    input.addEventListener('input', function() {
-                        const newEnrollment = parseFloat(this.value);
-                        console.log('New enrollment:', newEnrollment);
-
-                        // Update the WSCH
-                        const weeklyContactHours = parseFloat(this.getAttribute('data-weekly-contact-hours'));
-                        console.log('Weekly Contact Hours:', weeklyContactHours);
-
-                        // ceil(($course->total_enrollment * $course->duration_minutes) / 60);
-                        const course_duration_minutes = parseFloat(this.getAttribute('data-duration-minutes'));
-                        const newWsch = Math.ceil((newEnrollment * course_duration_minutes) / 60);
-                        console.log('New WSCH:', newWsch);
-                        this.closest('tr').querySelector('.forecast-wsch').textContent = newWsch;
-
-                        // Update the labs needed
-                        const wschBenchmark = parseFloat(this.closest('tr').querySelector('.wsch-benchmark')
-                            .textContent);
-                        const newLabsNeeded = (newWsch / wschBenchmark).toFixed(2);
-                        console.log('New labs needed:', newLabsNeeded);
-                        this.closest('tr').querySelector('.forecast-labs-needed').textContent = newLabsNeeded;
-
-                        // Update the delta
-                        const current_rooms = parseFloat(this.getAttribute('data-current-rooms'));
-                        const delta = (current_rooms - newLabsNeeded).toFixed(2);
-                        console.log('Delta:', delta);
-                        this.closest('tr').querySelector('.forecast-delta').textContent = delta;
-                        this.closest('tr').querySelector('.forecast-delta').classList.toggle('bg-danger', delta <
-                        0);
-                    });
-                });
+                }
             </script>
 
 
             <script>
-                // Function to sort the table rows based on column data
                 function sortTableByColumn(table, columnIndex, isNumeric = false) {
                     const tbody = table.querySelector('tbody');
                     console.log('Table:', table);
@@ -287,7 +312,6 @@
 
                         console.log('Comparing:', aColText, bColText);
 
-                        // Determine if we are sorting numerically or alphabetically
                         if (isNumeric) {
                             console.log('Sorting numerically');
                             return parseFloat(aColText) - parseFloat(bColText);
@@ -296,7 +320,6 @@
                         }
                     });
 
-                    // Append sorted rows back to the table
                     rowsArray.forEach(row => tbody.appendChild(row));
                 }
 
