@@ -78,18 +78,19 @@
                                 </div>
                             @endif
 
-                            <table class="table table-hover">
+                            <div class="table-responsive">
+                            <table class="table table-hover table-sm">
                                 <thead>
                                     <tr class="table-primary">
-                                        <th data-sort="text">Course Name</th>
+                                        <th data-sort="text">Course<br>Name</th>
                                         <th data-sort="numeric">Enrollment</th>
                                         <th data-sort="numeric">Sections</th>
                                         <th data-sort="numeric">Rooms</th>
-                                        <th data-sort="numeric">Capacity (combined)</th>
-                                        <th data-sort="numeric">Total WSCH</th>
-                                        <th data-sort="numeric">Avg per Section</th>
-                                        <th data-sort="numeric">WSCH Benchmark</th>
-                                        <th data-sort="numeric">Rooms Needed</th>
+                                        <th data-sort="numeric">Capacity</th>
+                                        <th data-sort="numeric">WSCH</th>
+                                        <th data-sort="numeric">Avg/<br>Section</th>
+                                        <th data-sort="numeric">WSCH<br>Bench</th>
+                                        <th data-sort="numeric">Rooms<br>Req</th>
                                         <th data-sort="numeric">Delta</th>
                                     </tr>
                                 </thead>
@@ -115,6 +116,7 @@
                                     @endforeach
                                 </tbody>
                             </table>
+                            </div>
 
 
 
@@ -134,24 +136,25 @@
                         </div>
 
                         <!-- Forecast Table -->
-                        <table class="table table-striped table-hover">
+                        <div class="table-responsive">
+                        <table class="table table-striped table-hover table-sm">
                             <thead style="position: sticky; top: 0;">
                                 <tr class="table-primary">
-                                    <th scope="col" data-sort="text">Course Name</th>
-                                    <th scope="col" data-sort="numeric">Enrollment</th>
-                                    <th scope="col" data-sort="numeric">Sections</th>
+                                    <th scope="col" data-sort="text">Course</th>
+                                    <th scope="col" data-sort="numeric">Enroll</th>
+                                    <th scope="col" data-sort="numeric">Sec</th>
                                     <th scope="col" data-sort="numeric">Rooms</th>
-                                    <th scope="col" data-sort="numeric">Capacity (combined)</th>
+                                    <th scope="col" data-sort="numeric">Capacity</th>
                                     <th scope="col" data-sort="numeric">CH</th>
-                                    <th scope="col" data-sort="numeric">Total WSCH</th>
-                                    <th scope="col" data-sort="numeric">Average per section</th>
-                                    <th scope="col" data-sort="numeric">Enroll growth</th>
-                                    <th scope="col" data-sort="numeric">WSCH growth</th>
-                                    <th scope="col" data-sort="numeric">Students per section</th>
-                                    <th scope="col" data-sort="numeric">Seating capacity 75% utiliz</th>
-                                    <th scope="col" data-sort="numeric">WSCH proposed, benchmark</th>
-                                    <th scope="col" data-sort="numeric">No of rooms needed</th>
-                                    <th scope="col" data-sort="text">Seating range</th>
+                                    <th scope="col" data-sort="numeric">WSCH</th>
+                                    <th scope="col" data-sort="numeric">Avg/<br>Sec</th>
+                                    <th scope="col" data-sort="numeric">Enroll<br>Growth</th>
+                                    <th scope="col" data-sort="numeric">WSCH<br>Growth</th>
+                                    <th scope="col" data-sort="numeric">Stu/<br>Sec</th>
+                                    <th scope="col" data-sort="numeric">Seat<br>@75%</th>
+                                    <th scope="col" data-sort="numeric">WSCH<br>Bench</th>
+                                    <th scope="col" data-sort="numeric">Rooms<br>Needed</th>
+                                    <th scope="col" data-sort="text">Seat<br>Range</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -225,9 +228,40 @@
                                 @endforeach
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <style>
+                /* Make tables more compact */
+                .table-responsive {
+                    max-width: 100%;
+                    overflow-x: auto;
+                }
+                .table-sm th,
+                .table-sm td {
+                    padding: 0.5rem 0.75rem;
+                    font-size: 0.875rem;
+                }
+                .table-sm td {
+                    white-space: nowrap;
+                }
+                .table-sm th {
+                    font-weight: 600;
+                    white-space: normal;
+                    word-wrap: break-word;
+                    text-align: center;
+                    vertical-align: bottom;
+                    min-width: 50px;
+                    line-height: 1.3;
+                    padding-bottom: 0.75rem;
+                }
+                .table-sm th[data-sort] {
+                    cursor: pointer;
+                    position: relative;
+                }
+            </style>
 
             <script>
                 // handle user input updates for enrollment increase
