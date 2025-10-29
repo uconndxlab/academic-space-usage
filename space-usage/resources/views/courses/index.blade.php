@@ -81,21 +81,21 @@
                             <table class="table table-hover">
                                 <thead>
                                     <tr class="table-primary">
-                                        <th>Course Name</th>
-                                        <th>Enrollment</th>
-                                        <th>Sections</th>
-                                        <th>Rooms</th>
-                                        <th>Capacity (combined)</th>
-                                        <th>Total WSCH</th>
-                                        <th>Avg per Section</th>
-                                        <th>WSCH Benchmark</th>
-                                        <th>Rooms Needed</th>
-                                        <th>Delta</th>
+                                        <th data-sort="text">Course Name</th>
+                                        <th data-sort="numeric">Enrollment</th>
+                                        <th data-sort="numeric">Sections</th>
+                                        <th data-sort="numeric">Rooms</th>
+                                        <th data-sort="numeric">Capacity (combined)</th>
+                                        <th data-sort="numeric">Total WSCH</th>
+                                        <th data-sort="numeric">Avg per Section</th>
+                                        <th data-sort="numeric">WSCH Benchmark</th>
+                                        <th data-sort="numeric">Rooms Needed</th>
+                                        <th data-sort="numeric">Delta</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($courses as $course)
-                                        <tr>
+                                        <tr class="table-course">
                                             <td>
                                                 <a href="{{ route('courses.show', $course->id) }}?campus_id={{ request('campus') }}&sa_facility_type={{ request('sa_facility_type') }}">
                                                     {{ $course->subject_code }} {{ $course->catalog_number }}
@@ -137,21 +137,21 @@
                         <table class="table table-striped table-hover">
                             <thead style="position: sticky; top: 0;">
                                 <tr class="table-primary">
-                                    <th scope="col">Course Name</th>
-                                    <th scope="col">Enrollment</th>
-                                    <th scope="col">Sections</th>
-                                    <th scope="col">Rooms</th>
-                                    <th scope="col">Capacity (combined)</th>
-                                    <th scope="col">CH</th>
-                                    <th scope="col">Total WSCH</th>
-                                    <th scope="col">Average per section</th>
-                                    <th scope="col">Enroll growth</th>
-                                    <th scope="col">WSCH growth</th>
-                                    <th scope="col">Students per section</th>
-                                    <th scope="col">Seating capacity 75% utiliz</th>
-                                    <th scope="col">WSCH proposed, benchmark</th>
-                                    <th scope="col">No of rooms needed</th>
-                                    <th scope="col">Seating range</th>
+                                    <th scope="col" data-sort="text">Course Name</th>
+                                    <th scope="col" data-sort="numeric">Enrollment</th>
+                                    <th scope="col" data-sort="numeric">Sections</th>
+                                    <th scope="col" data-sort="numeric">Rooms</th>
+                                    <th scope="col" data-sort="numeric">Capacity (combined)</th>
+                                    <th scope="col" data-sort="numeric">CH</th>
+                                    <th scope="col" data-sort="numeric">Total WSCH</th>
+                                    <th scope="col" data-sort="numeric">Average per section</th>
+                                    <th scope="col" data-sort="numeric">Enroll growth</th>
+                                    <th scope="col" data-sort="numeric">WSCH growth</th>
+                                    <th scope="col" data-sort="numeric">Students per section</th>
+                                    <th scope="col" data-sort="numeric">Seating capacity 75% utiliz</th>
+                                    <th scope="col" data-sort="numeric">WSCH proposed, benchmark</th>
+                                    <th scope="col" data-sort="numeric">No of rooms needed</th>
+                                    <th scope="col" data-sort="text">Seating range</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -295,29 +295,54 @@
 
 
             <script>
-                function sortTableByColumn(table, columnIndex, isNumeric = false) {
+                // Track current sort state per table
+                const sortState = new Map(); // Map<table, {columnIndex: number, direction: 'asc'|'desc'}>
+
+                function updateSortIndicator(header, direction) {
+                    // Remove all sort indicators from headers in the same table
+                    const table = header.closest('table');
+                    table.querySelectorAll('th[data-sort]').forEach(th => {
+                        th.classList.remove('sort-asc', 'sort-desc');
+                    });
+
+                    // Add indicator to current header
+                    if (direction === 'asc') {
+                        header.classList.add('sort-asc');
+                        header.setAttribute('title', 'Click to sort descending');
+                    } else {
+                        header.classList.add('sort-desc');
+                        header.setAttribute('title', 'Click to sort ascending');
+                    }
+                }
+
+                function sortTableByColumn(table, columnIndex, isNumeric = false, direction = 'asc') {
                     const tbody = table.querySelector('tbody');
-                    console.log('Table:', table);
-                    console.log('Tbody:', tbody);
+                    if (!tbody) return;
 
-                    const rowsArray = Array.from(tbody.querySelectorAll('tr.table-course'));
-                    console.log('Rows array:', rowsArray);
-
-                    console.log('Sorting by column:', columnIndex);
-                    console.log('Is numeric?', isNumeric);
+                    // Get all rows - look for both class names used in different tables
+                    const rowsArray = Array.from(tbody.querySelectorAll('tr.table-course, tr.course-row'));
+                    if (rowsArray.length === 0) return;
 
                     rowsArray.sort((a, b) => {
-                        const aColText = a.querySelector(`td:nth-child(${columnIndex + 1})`).textContent.trim();
-                        const bColText = b.querySelector(`td:nth-child(${columnIndex + 1})`).textContent.trim();
+                        const aCell = a.querySelector(`td:nth-child(${columnIndex + 1})`);
+                        const bCell = b.querySelector(`td:nth-child(${columnIndex + 1})`);
 
-                        console.log('Comparing:', aColText, bColText);
+                        if (!aCell || !bCell) return 0;
 
+                        const aColText = aCell.textContent.trim();
+                        const bColText = bCell.textContent.trim();
+
+                        let comparison = 0;
                         if (isNumeric) {
-                            console.log('Sorting numerically');
-                            return parseFloat(aColText) - parseFloat(bColText);
+                            const aNum = parseFloat(aColText.replace(/[^0-9.-]/g, '')) || 0;
+                            const bNum = parseFloat(bColText.replace(/[^0-9.-]/g, '')) || 0;
+                            comparison = aNum - bNum;
                         } else {
-                            return aColText.localeCompare(bColText);
+                            comparison = aColText.localeCompare(bColText);
                         }
+
+                        // Reverse comparison if sorting descending
+                        return direction === 'desc' ? -comparison : comparison;
                     });
 
                     rowsArray.forEach(row => tbody.appendChild(row));
@@ -325,17 +350,48 @@
 
                 // Add click event listener to the sortable table headers
                 document.querySelectorAll('th[data-sort]').forEach(header => {
+                    header.style.cursor = 'pointer';
+                    header.setAttribute('title', 'Click to sort');
+                    
+                    // Add CSS for sort indicators
+                    if (!document.querySelector('#sortStyles')) {
+                        const style = document.createElement('style');
+                        style.id = 'sortStyles';
+                        style.textContent = `
+                            th[data-sort].sort-asc::after {
+                                content: ' ▲';
+                                opacity: 0.7;
+                            }
+                            th[data-sort].sort-desc::after {
+                                content: ' ▼';
+                                opacity: 0.7;
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+
                     header.addEventListener('click', function() {
-                        console.log('Sorting by column:', header.textContent);
-                        const table = header.closest('table');
-                        const columnIndex = Array.from(header.parentNode.children).indexOf(header);
-                        const isNumeric = header.getAttribute('data-sort') ===
-                            'delta'; // Add any numeric column names here
+                        const table = this.closest('table');
+                        const columnIndex = Array.from(this.parentNode.children).indexOf(this);
+                        const isNumeric = this.getAttribute('data-sort') === 'numeric';
 
-                        console.log('Column index:', columnIndex);
-                        console.log('Is numeric?', isNumeric);
+                        // Get current sort state for this table
+                        const currentState = sortState.get(table);
+                        let newDirection = 'asc';
 
-                        sortTableByColumn(table, columnIndex, isNumeric);
+                        // If clicking the same column, toggle direction
+                        if (currentState && currentState.columnIndex === columnIndex) {
+                            newDirection = currentState.direction === 'asc' ? 'desc' : 'asc';
+                        }
+
+                        // Update sort state
+                        sortState.set(table, { columnIndex, direction: newDirection });
+
+                        // Perform sort
+                        sortTableByColumn(table, columnIndex, isNumeric, newDirection);
+
+                        // Update visual indicator
+                        updateSortIndicator(this, newDirection);
                     });
                 });
             </script>
