@@ -4,38 +4,50 @@
     <div class="container">
         <h1 class="mb-4">Course List</h1>
 
-        <!-- filter by department -- select box of all the unique departments -->
+        <!-- filter by term, department, campus, and facility type -->
         <div class="mb-4">
             <form method="GET" action="{{ route('courses.index') }}" id="filterForm">
-                <div class="form-group">
-                    <label for="departmentFilter" class="form-label">Filter by Department <span class="text-danger">*</span></label>
-                    <select name="department" id="departmentFilter" class="form-select" required>
-                        <option value="">-- Select Department --</option>
-                        @foreach ($departments as $department)
-                            <option @selected($department == request('department')) value="{{ $department }}">{{ $department }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="termFilter" class="form-label">Filter by Term <span class="text-danger">*</span></label>
+                        <select name="term" id="termFilter" class="form-select" required>
+                            <option value="">-- Select Term --</option>
+                            @foreach ($terms as $term)
+                                <option @selected($term->id == request('term')) value="{{ $term->id }}">{{ $term->term_code }} - {{ $term->term_descr }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                <div class="form-group mt-3">
-                    <label for="campusFilter" class="form-label">Filter by Campus <span class="text-danger">*</span></label>
-                    <select name="campus" id="campusFilter" class="form-select" required>
-                        <option value="">-- Select Campus --</option>
-                        @foreach ($campuses as $campus)
-                            <option @selected($campus->id == request('campus')) value="{{ $campus->id }}">{{ $campus->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="departmentFilter" class="form-label">Filter by Department <span class="text-danger">*</span></label>
+                        <select name="department" id="departmentFilter" class="form-select" required>
+                            <option value="">-- Select Department --</option>
+                            @foreach ($departments as $department)
+                                <option @selected($department == request('department')) value="{{ $department }}">{{ $department }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                {{-- dropdown of all SA_Facility_Types --}}
-                <div class="form-group mt-3">
-                    <label for="facilityTypeFilter" class="form-label">Filter by Facility Type <span class="text-danger">*</span></label>
-                    <select name="sa_facility_type" id="facilityTypeFilter" class="form-select" required>
-                        <option value="">-- Select Facility Type --</option>
-                        @foreach ($facilityTypes as $facilityType)
-                            <option @selected($facilityType == request('sa_facility_type')) value="{{ $facilityType }}">{{ $facilityType }}</option>
-                        @endforeach
-                    </select>
+                    <div class="col-md-6 mb-3">
+                        <label for="campusFilter" class="form-label">Filter by Campus <span class="text-danger">*</span></label>
+                        <select name="campus" id="campusFilter" class="form-select" required>
+                            <option value="">-- Select Campus --</option>
+                            @foreach ($campuses as $campus)
+                                <option @selected($campus->id == request('campus')) value="{{ $campus->id }}">{{ $campus->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- dropdown of all SA_Facility_Types --}}
+                    <div class="col-md-6 mb-3">
+                        <label for="facilityTypeFilter" class="form-label">Filter by Facility Type</label>
+                        <select name="sa_facility_type" id="facilityTypeFilter" class="form-select">
+                            <option value="all" @selected(request('sa_facility_type', 'all') == 'all')>All</option>
+                            @foreach ($facilityTypes as $facilityType)
+                                <option @selected($facilityType == request('sa_facility_type', 'all')) value="{{ $facilityType }}">{{ $facilityType }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
                 <div class="mt-3">
@@ -46,8 +58,9 @@
         </div>
 
         @php
-            $hasAllFilters = request()->has('department') && request()->has('campus') && request()->has('sa_facility_type') 
-                && request('department') !== '' && request('campus') !== '' && request('sa_facility_type') !== '';
+            $selectedFacilityType = request('sa_facility_type', 'all');
+            $hasAllFilters = request()->has('term') && request()->has('department') && request()->has('campus') 
+                && request('term') !== '' && request('department') !== '' && request('campus') !== '';
         @endphp
 
         @if($hasAllFilters)
@@ -65,9 +78,9 @@
                         <p>No courses available.</p>
                     @else
                     <!-- Forecast Table -->
-                    <div class="table-responsive">
-                    <table class="table table-striped table-hover table-sm">
-                            <thead style="position: sticky; top: 0;">
+                    <div class="table-scroll-wrapper">
+                        <table class="table table-striped table-hover table-sm sticky-header-table">
+                            <thead>
                                 <tr class="table-primary">
                                     <th scope="col" data-sort="text">Course</th>
                                     <th scope="col" data-sort="numeric">Enroll</th>
@@ -96,9 +109,8 @@
                                         $seating_75_util = $course->total_capacity * 0.75;
                                         $contact_hours = $course->duration_minutes / 60;
                                         
-                                        // This is for seating range caulation based on the
-                                        // Spread sheet formula 
-                                        // This is only done on the page load its then handled in the JS
+                                        // Seating range calculation based on spreadsheet formula
+                                        // Only calculated on page load, then handled in JavaScript
                                         $seating_range = 'N/A';
                                         if ($seating_75_util > 0) {
                                             if ($seating_75_util <= 25) {
@@ -163,34 +175,207 @@
             </div>
 
             <style>
-                /* Make tables more compact */
-                .table-responsive {
-                    max-width: 100%;
+                .table-scroll-wrapper {
                     overflow-x: auto;
-                }
-                .table-sm th,
-                .table-sm td {
-                    padding: 0.5rem 0.75rem;
-                    font-size: 0.875rem;
-                }
-                .table-sm td {
-                    white-space: nowrap;
-                }
-                .table-sm th {
-                    font-weight: 600;
-                    white-space: normal;
-                    word-wrap: break-word;
-                    text-align: center;
-                    vertical-align: bottom;
-                    min-width: 50px;
-                    line-height: 1.3;
-                    padding-bottom: 0.75rem;
-                }
-                .table-sm th[data-sort] {
-                    cursor: pointer;
+                    overflow-y: visible;
                     position: relative;
                 }
+                .sticky-header-placeholder {
+                    background-color: #002855;
+                    overflow: hidden;
+                    max-width: 100vw;
+                }
+                .sticky-header-placeholder table {
+                    background-color: #002855;
+                }
+                .sticky-header-placeholder th {
+                    background-color: #002855 !important;
+                    color: #ffffff !important;
+                }
             </style>
+
+            <script>
+                (function() {
+                    const termFilter = document.querySelector('#termFilter');
+                    const departmentFilter = document.querySelector('#departmentFilter');
+                    const campusFilter = document.querySelector('#campusFilter');
+                    const facilityTypeFilter = document.querySelector('#facilityTypeFilter');
+                    
+                    // Store original options for reset
+                    const originalDepartmentOptions = Array.from(departmentFilter.options);
+                    const originalCampusOptions = Array.from(campusFilter.options);
+                    const originalFacilityTypeOptions = Array.from(facilityTypeFilter.options);
+                    
+                    async function updateFilterOptions() {
+                        // Save current selections BEFORE making any changes
+                        const term = termFilter.value;
+                        const department = departmentFilter.value;
+                        const savedCampus = campusFilter.value;
+                        const savedFacilityType = facilityTypeFilter.value;
+                        
+                        try {
+                            const params = new URLSearchParams();
+                            if (term) params.append('term', term);
+                            if (department) params.append('department', department);
+                            if (savedCampus) params.append('campus', savedCampus);
+                            
+                            // Update departments if term is selected
+                            if (term) {
+                                const deptParams = new URLSearchParams();
+                                deptParams.append('term', term);
+                                
+                                const deptResponse = await fetch('{{ route("courses.filterOptions") }}?' + deptParams.toString());
+                                const deptData = await deptResponse.json();
+                                
+                                // Clear and repopulate department options
+                                departmentFilter.innerHTML = '<option value="">-- Select Department --</option>';
+                                if (deptData.departments && deptData.departments.length > 0) {
+                                    deptData.departments.forEach(dept => {
+                                        const option = document.createElement('option');
+                                        option.value = dept;
+                                        option.textContent = dept;
+                                        departmentFilter.appendChild(option);
+                                    });
+                                }
+                                
+                                // Restore saved department if still valid
+                                if (department && deptData.departments && deptData.departments.includes(department)) {
+                                    departmentFilter.value = department;
+                                } else {
+                                    departmentFilter.value = '';
+                                }
+                            } else {
+                                // No term - restore original department options
+                                const savedDeptValue = department;
+                                departmentFilter.innerHTML = '';
+                                originalDepartmentOptions.forEach(opt => {
+                                    const newOpt = opt.cloneNode(true);
+                                    departmentFilter.appendChild(newOpt);
+                                });
+                                if (savedDeptValue && Array.from(departmentFilter.options).some(opt => opt.value == savedDeptValue)) {
+                                    departmentFilter.value = savedDeptValue;
+                                } else {
+                                    departmentFilter.value = '';
+                                }
+                            }
+                            
+                            // Get current department value (may have changed above)
+                            const currentDepartment = departmentFilter.value;
+                            
+                            // Update campuses if term or department is selected
+                            if (term || currentDepartment) {
+                                const campusParams = new URLSearchParams();
+                                if (term) campusParams.append('term', term);
+                                if (currentDepartment) campusParams.append('department', currentDepartment);
+                                
+                                const campusResponse = await fetch('{{ route("courses.filterOptions") }}?' + campusParams.toString());
+                                const campusData = await campusResponse.json();
+                                
+                                // Clear and repopulate campus options
+                                campusFilter.innerHTML = '<option value="">-- Select Campus --</option>';
+                                if (campusData.campuses && campusData.campuses.length > 0) {
+                                    campusData.campuses.forEach(campus => {
+                                        const option = document.createElement('option');
+                                        option.value = campus.id;
+                                        option.textContent = campus.name;
+                                        campusFilter.appendChild(option);
+                                    });
+                                }
+                                
+                                // Restore saved campus if still valid
+                                const savedCampusStr = String(savedCampus);
+                                const campusExists = campusData.campuses && campusData.campuses.some(c => String(c.id) === savedCampusStr);
+                                if (savedCampus && campusExists) {
+                                    campusFilter.value = savedCampusStr;
+                                } else {
+                                    campusFilter.value = '';
+                                    facilityTypeFilter.value = 'all';
+                                }
+                            } else {
+                                // No filters - restore original campus options
+                                const savedCampusValue = savedCampus;
+                                campusFilter.innerHTML = '';
+                                originalCampusOptions.forEach(opt => {
+                                    const newOpt = opt.cloneNode(true);
+                                    campusFilter.appendChild(newOpt);
+                                });
+                                if (savedCampusValue && Array.from(campusFilter.options).some(opt => opt.value == savedCampusValue)) {
+                                    campusFilter.value = savedCampusValue;
+                                } else {
+                                    campusFilter.value = '';
+                                }
+                            }
+                            
+                            // Get current campus value (may have changed above)
+                            const currentCampus = campusFilter.value;
+                            
+                            // Update facility types if term, department, or campus is selected
+                            if (term || currentDepartment || currentCampus) {
+                                const facilityParams = new URLSearchParams();
+                                if (term) facilityParams.append('term', term);
+                                if (currentDepartment) facilityParams.append('department', currentDepartment);
+                                if (currentCampus) facilityParams.append('campus', currentCampus);
+                                
+                                const facilityResponse = await fetch('{{ route("courses.filterOptions") }}?' + facilityParams.toString());
+                                const facilityData = await facilityResponse.json();
+                                
+                                // Clear and repopulate facility type options
+                                facilityTypeFilter.innerHTML = '<option value="all">All</option>';
+                                if (facilityData.facilityTypes && facilityData.facilityTypes.length > 0) {
+                                    facilityData.facilityTypes.forEach(facilityType => {
+                                        const option = document.createElement('option');
+                                        option.value = facilityType;
+                                        option.textContent = facilityType;
+                                        facilityTypeFilter.appendChild(option);
+                                    });
+                                }
+                                
+                                // Restore saved facility type if still valid
+                                if (savedFacilityType && (savedFacilityType === 'all' || (facilityData.facilityTypes && facilityData.facilityTypes.includes(savedFacilityType)))) {
+                                    facilityTypeFilter.value = savedFacilityType;
+                                } else {
+                                    facilityTypeFilter.value = 'all';
+                                }
+                            } else {
+                                // No filters - restore original facility type options
+                                const savedFacilityTypeValue = savedFacilityType;
+                                facilityTypeFilter.innerHTML = '';
+                                originalFacilityTypeOptions.forEach(opt => {
+                                    const newOpt = opt.cloneNode(true);
+                                    facilityTypeFilter.appendChild(newOpt);
+                                });
+                                if (savedFacilityTypeValue && Array.from(facilityTypeFilter.options).some(opt => opt.value == savedFacilityTypeValue)) {
+                                    facilityTypeFilter.value = savedFacilityTypeValue;
+                                } else {
+                                    facilityTypeFilter.value = 'all';
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error updating filter options:', error);
+                        }
+                    }
+                    
+                    // Listen for changes
+                    termFilter.addEventListener('change', function() {
+                        updateFilterOptions();
+                    });
+                    
+                    departmentFilter.addEventListener('change', function() {
+                        updateFilterOptions();
+                    });
+                    
+                    campusFilter.addEventListener('change', function() {
+                        setTimeout(() => {
+                            updateFilterOptions();
+                        }, 0);
+                    });
+                    
+                    // Initialize filters on page load if term or department is already selected
+                    if (termFilter.value || departmentFilter.value) {
+                        updateFilterOptions();
+                    }
+                })();
+            </script>
 
             <script>
                 // handle user input updates for enrollment increase
@@ -208,7 +393,7 @@
                     const seating75Util = Math.round(totalCapacity * 0.75);
                     const roomsNeeded = wschBenchmark > 0 ? (wschGrowth / wschBenchmark).toFixed(2) : '0.00';
                     
-                    //As mentioned above this is pulled fom the xlsxx logic for seating range calculation
+                    // Seating range calculation logic from spreadsheet formula
                     let seatingRange = 'N/A';
                     if (seating75Util > 0) {
                         if (seating75Util <= 25) {
@@ -359,15 +544,151 @@
                 });
             </script>
 
+            <script>
+                // Sticky header implementation
+                (function() {
+                    const table = document.querySelector('.sticky-header-table');
+                    if (!table) return;
+                    
+                    const thead = table.querySelector('thead');
+                    const headerRow = thead?.querySelector('tr');
+                    
+                    if (!headerRow) return;
+                    
+                    let stickyHeader = null;
+                    let isSticky = false;
+                    
+                    function createStickyHeader() {
+                        if (stickyHeader) return;
+                        
+                        stickyHeader = document.createElement('div');
+                        stickyHeader.className = 'sticky-header-placeholder';
+                        stickyHeader.style.cssText = 'position: fixed; top: 0; z-index: 9999; display: none; overflow: hidden;';
+                        
+                        const stickyTable = document.createElement('table');
+                        stickyTable.className = 'table table-sm sticky-header-table';
+                        stickyTable.style.cssText = 'margin: 0;';
+                        
+                        const stickyThead = document.createElement('thead');
+                        stickyThead.className = 'table-primary';
+                        stickyThead.innerHTML = headerRow.outerHTML;
+                        
+                        stickyTable.appendChild(stickyThead);
+                        stickyHeader.appendChild(stickyTable);
+                        
+                        const originalThs = Array.from(headerRow.querySelectorAll('th'));
+                        const stickyThs = Array.from(stickyThead.querySelectorAll('th'));
+                        
+                        stickyThs.forEach((th, index) => {
+                            if (originalThs[index]) {
+                                th.style.cssText = originalThs[index].style.cssText;
+                                th.style.backgroundColor = '#002855';
+                                th.style.color = '#ffffff';
+                            }
+                        });
+                        
+                        document.body.appendChild(stickyHeader);
+                    }
+                    
+                    function updateStickyHeader() {
+                        if (!stickyHeader) createStickyHeader();
+                        
+                        const rect = thead.getBoundingClientRect();
+                        const shouldBeSticky = rect.top < 0;
+                        
+                        const tableContainer = table.closest('.table-scroll-wrapper') || table.parentElement;
+                        const containerRect = tableContainer.getBoundingClientRect();
+                        
+                        if (shouldBeSticky && !isSticky) {
+                            stickyHeader.style.display = 'block';
+                            isSticky = true;
+                            
+                            const stickyThs = Array.from(stickyHeader.querySelectorAll('th'));
+                            const originalThs = Array.from(headerRow.querySelectorAll('th'));
+                            
+                            stickyThs.forEach((th, index) => {
+                                if (originalThs[index]) {
+                                    const width = originalThs[index].offsetWidth;
+                                    th.style.width = width + 'px';
+                                    th.style.minWidth = width + 'px';
+                                    th.style.maxWidth = width + 'px';
+                                }
+                            });
+                            
+                            const viewportWidth = window.innerWidth;
+                            const left = Math.max(0, containerRect.left);
+                            const containerWidth = Math.min(containerRect.width, viewportWidth - left);
+                            
+                            stickyHeader.style.left = left + 'px';
+                            stickyHeader.style.width = containerWidth + 'px';
+                            stickyHeader.style.maxWidth = viewportWidth + 'px';
+                            stickyHeader.querySelector('table').style.width = table.offsetWidth + 'px';
+                        } else if (!shouldBeSticky && isSticky) {
+                            stickyHeader.style.display = 'none';
+                            isSticky = false;
+                        }
+                        
+                        if (isSticky) {
+                            const viewportWidth = window.innerWidth;
+                            const left = Math.max(0, containerRect.left);
+                            const containerWidth = Math.min(containerRect.width, viewportWidth - left);
+                            
+                            stickyHeader.style.left = left + 'px';
+                            stickyHeader.style.width = containerWidth + 'px';
+                            stickyHeader.style.maxWidth = viewportWidth + 'px';
+                            
+                            const scrollLeft = tableContainer.scrollLeft || 0;
+                            stickyHeader.querySelector('table').style.transform = `translateX(-${scrollLeft}px)`;
+                        }
+                    }
+                    
+                    function handleScroll() {
+                        updateStickyHeader();
+                    }
+                    
+                    function handleResize() {
+                        if (isSticky) {
+                            updateStickyHeader();
+                        }
+                    }
+                    
+                    function handleHorizontalScroll() {
+                        if (isSticky && stickyHeader) {
+                            const tableContainer = table.closest('.table-scroll-wrapper') || table.parentElement;
+                            const scrollLeft = tableContainer.scrollLeft || 0;
+                            stickyHeader.querySelector('table').style.transform = `translateX(-${scrollLeft}px)`;
+                        }
+                    }
+                    
+                    window.addEventListener('scroll', handleScroll, { passive: true });
+                    window.addEventListener('resize', handleResize);
+                    
+                    const tableContainer = table.closest('.table-scroll-wrapper') || table.parentElement;
+                    if (tableContainer) {
+                        tableContainer.addEventListener('scroll', handleHorizontalScroll, { passive: true });
+                    }
+                    
+                    // Initial check
+                    updateStickyHeader();
+                    
+                    // Clean up on page unload
+                    window.addEventListener('beforeunload', function() {
+                        if (stickyHeader) {
+                            stickyHeader.remove();
+                        }
+                    });
+                })();
+            </script>
 
         </div>
         @else
         <div class="alert alert-info mt-4" role="alert">
-            <strong>Please select all filters above and click "Filter" to view course data.</strong>
+            <strong>Please select required filters above and click "Filter" to view course data.</strong>
             <ul class="mt-2 mb-0">
-                <li>Department</li>
-                <li>Campus</li>
-                <li>Facility Type</li>
+                <li>Term (required)</li>
+                <li>Department (required)</li>
+                <li>Campus (required)</li>
+                <li>Facility Type (optional - defaults to "All")</li>
             </ul>
         </div>
         @endif
