@@ -145,6 +145,7 @@
                                         data-weekly-contact-hours="{{ $course->total_wsch }}"
                                         data-sections-count="{{ $course->sections_count }}"
                                         data-total-capacity="{{ $course->total_capacity }}"
+                                        data-capacity-per-room="{{ $course->capacity_per_room }}"
                                         data-wsch-benchmark="{{ $course->wsch_benchmark }}">
                                         <td>
                                             <a href="{{ route('courses.show', $course->id) }}">
@@ -384,14 +385,19 @@
                     const durationMinutes = parseFloat(row.getAttribute('data-duration-minutes'));
                     const sectionsCount = parseFloat(row.getAttribute('data-sections-count'));
                     const totalCapacity = parseFloat(row.getAttribute('data-total-capacity'));
+                    const capacityPerRoom = parseFloat(row.getAttribute('data-capacity-per-room'));
                     const wschBenchmark = parseFloat(row.getAttribute('data-wsch-benchmark'));
                     
                     const growthEnrollment = Math.round(originalEnrollment * (1 + growthPercentage / 100));
                     
                     const wschGrowth = Math.ceil((growthEnrollment * durationMinutes) / 60);
                     const studentsPerSection = sectionsCount > 0 ? (growthEnrollment / sectionsCount).toFixed(2) : '0.00';
-                    const seating75Util = Math.round(totalCapacity * 0.75);
-                    const roomsNeeded = wschBenchmark > 0 ? (wschGrowth / wschBenchmark).toFixed(2) : '0.00';
+                    
+                    const seating75Util = Math.round((growthEnrollment * 0.75));
+                    
+                    const roomsNeeded = capacityPerRoom > 0 
+                        ? Math.ceil(seating75Util / (capacityPerRoom)) 
+                        : 0;
                     
                     // Seating range calculation logic from spreadsheet formula
                     let seatingRange = 'N/A';

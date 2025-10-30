@@ -112,9 +112,13 @@ class CourseController
             $course->total_wsch = ceil(($course->total_enrollment * $course->duration_minutes) / 60);
     
             $roomCapacity = optional($sections->first()->room)->capacity ?? 1; 
-            $course->wsch_benchmark = round(28 * ($roomCapacity * 0.8), -1);
+            $course->wsch_benchmark = round(32 * ($roomCapacity * 0.8), -1);
     
-            $course->rooms_needed = round($course->total_wsch / $course->wsch_benchmark, 2);
+            // Calculate average capacity per room (avoid division by zero)
+            $course->capacity_per_room = $course->rooms_used > 0 ? $course->total_capacity / $course->rooms_used : $roomCapacity;
+            $course->rooms_needed = $course->capacity_per_room > 0 
+                ? round(($course->total_capacity * 0.75) / $course->capacity_per_room, 0) 
+                : 0;
 
             
     
