@@ -74,7 +74,7 @@ class CourseController
     
         $hasAllFilters = !empty($selectedTerm) && !empty($selectedDepartment) && !empty($selectedCampus);
     
-        $courses = collect(); 
+        $sectionsData = collect(); 
     
         if ($hasAllFilters) {
             $sections = Section::query()->with(['course', 'room', 'room.building']);
@@ -100,35 +100,40 @@ class CourseController
                 $query->where('subject_code', $selectedDepartment);
             });
         
-            $filteredSections = $sections->get();
-            $courses = $filteredSections->groupBy('course_id')->map(function ($sections) {
-            $course = $sections->first()->course;
-    
-            $course->total_enrollment = $sections->sum('day10_enrol');
-            $course->sections_count = $sections->count();
-            $course->rooms_used = $sections->unique('room_id')->count();
-            $course->total_capacity = $sections->unique('room_id')->sum('room.capacity');
-    
-            $course->total_wsch = ceil(($course->total_enrollment * $course->duration_minutes) / 60);
-    
-            $roomCapacity = optional($sections->first()->room)->capacity ?? 1; 
-            $course->wsch_benchmark = round(32 * ($roomCapacity * 0.8), -1);
-    
-            // Calculate average capacity per room (avoid division by zero)
-            $course->capacity_per_room = $course->rooms_used > 0 ? $course->total_capacity / $course->rooms_used : $roomCapacity;
-            $course->rooms_needed = $course->capacity_per_room > 0 
-                ? round(($course->total_capacity * 0.75) / $course->capacity_per_room, 0) 
-                : 0;
-
-            
-    
-            $course->delta = $course->rooms_used - $course->rooms_needed;
-    
-            return $course;
+            // Moved all logic to client side and we just give the data for calculations now
+            $sectionsData = $sections->get()->groupBy('course_id')->map(function ($sections) {
+                $course = $sections->first()->course;
+                $firstRoom = $sections->first()->room;
+                
+                return [
+                    'course_id' => $course->id,
+                    'subject_code' => $course->subject_code,
+                    'catalog_number' => $course->catalog_number,
+                    'class_descr' => $course->class_descr,
+                    'duration_minutes' => $course->duration_minutes,
+                    'sections' => $sections->map(function ($section) {
+                        return [
+                            'section_id' => $section->id,
+                            'day10_enrol' => $section->day10_enrol,
+                            'room_id' => $section->room_id,
+                            'room' => $section->room ? [
+                                'id' => $section->room->id,
+                                'capacity' => $section->room->capacity,
+                                'room_number' => $section->room->room_number,
+                                'sa_facility_type' => $section->room->sa_facility_type,
+                                'building' => $section->room->building ? [
+                                    'id' => $section->room->building->id,
+                                    'building_code' => $section->room->building->building_code,
+                                ] : null,
+                            ] : null,
+                        ];
+                    })->values()->toArray(),
+                    'first_room_capacity' => $firstRoom ? $firstRoom->capacity : 1,
+                ];
             })->values(); 
         }
     
-        return view('courses.index', compact('courses', 'terms', 'departments', 'campuses', 'facilityTypes'));
+        return view('courses.index', compact('sectionsData', 'terms', 'departments', 'campuses', 'facilityTypes'));
     }
 
     /**
