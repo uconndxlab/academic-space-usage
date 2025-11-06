@@ -182,6 +182,33 @@ class NewDataStructure extends Seeder
                 // No department enrollment columns in new format, set to empty array
                 $enrollments_by_dept = [];
 
+                // Parse Class_Days format [YNYNYNN] where positions are Sun-Sat (7 days)
+                // Y = class on that day, N = no class
+                // Position 0: Sunday, 1: Monday, 2: Tuesday, 3: Wednesday, 4: Thursday, 5: Friday, 6: Saturday
+                $classDays = trim($data['Class_Days'] ?? '');
+                $sunday = false;
+                $monday = false;
+                $tuesday = false;
+                $wednesday = false;
+                $thursday = false;
+                $friday = false;
+                $saturday = false;
+                $totalClassDays = 0;
+
+                if (strlen($classDays) >= 7) {
+                    $sunday = strtoupper($classDays[0]) === 'Y';
+                    $monday = strtoupper($classDays[1]) === 'Y';
+                    $tuesday = strtoupper($classDays[2]) === 'Y';
+                    $wednesday = strtoupper($classDays[3]) === 'Y';
+                    $thursday = strtoupper($classDays[4]) === 'Y';
+                    $friday = strtoupper($classDays[5]) === 'Y';
+                    $saturday = strtoupper($classDays[6]) === 'Y';
+                    
+                    $totalClassDays = ($sunday ? 1 : 0) + ($monday ? 1 : 0) + ($tuesday ? 1 : 0) + 
+                                     ($wednesday ? 1 : 0) + ($thursday ? 1 : 0) + ($friday ? 1 : 0) + 
+                                     ($saturday ? 1 : 0);
+                }
+
                 // Handle Section
                 $section = Section::create([
                     'section_number' => trim($data['Class_Section'] ?? ''),
@@ -191,7 +218,15 @@ class NewDataStructure extends Seeder
                     'component_code' => trim($data['Class_Component_Code'] ?? ''),
                     'start_time' => trim($data['Class_Start_Time'] ?? ''),
                     'end_time' => trim($data['Class_End_Time'] ?? ''),
-                    'days' => trim($data['Class_Days'] ?? ''),
+                    'days' => $classDays,
+                    'sunday' => $sunday,
+                    'monday' => $monday,
+                    'tuesday' => $tuesday,
+                    'wednesday' => $wednesday,
+                    'thursday' => $thursday,
+                    'friday' => $friday,
+                    'saturday' => $saturday,
+                    'total_class_days' => $totalClassDays,
                     'room_id' => $roomModel->id,
                     'enrollments_by_dept' => json_encode($enrollments_by_dept),
                 ]);

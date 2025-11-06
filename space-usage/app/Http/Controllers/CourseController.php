@@ -100,37 +100,33 @@ class CourseController
                 $query->where('subject_code', $selectedDepartment);
             });
         
-            // Moved all logic to client side and we just give the data for calculations now
-            $sectionsData = $sections->get()->groupBy('course_id')->map(function ($sections) {
-                $course = $sections->first()->course;
-                $firstRoom = $sections->first()->room;
-                
-                return [
-                    'course_id' => $course->id,
-                    'subject_code' => $course->subject_code,
-                    'catalog_number' => $course->catalog_number,
-                    'class_descr' => $course->class_descr,
-                    'duration_minutes' => $course->duration_minutes,
-                    'sections' => $sections->map(function ($section) {
-                        return [
-                            'section_id' => $section->id,
-                            'day10_enrol' => $section->day10_enrol,
-                            'room_id' => $section->room_id,
-                            'room' => $section->room ? [
-                                'id' => $section->room->id,
-                                'capacity' => $section->room->capacity,
-                                'room_number' => $section->room->room_number,
-                                'sa_facility_type' => $section->room->sa_facility_type,
-                                'building' => $section->room->building ? [
-                                    'id' => $section->room->building->id,
-                                    'building_code' => $section->room->building->building_code,
-                                ] : null,
-                            ] : null,
-                        ];
-                    })->values()->toArray(),
-                    'first_room_capacity' => $firstRoom ? $firstRoom->capacity : 1,
-                ];
-            })->values(); 
+        // Return individual sections instead of grouping by course
+        $sectionsData = $sections->get()->map(function ($section) {
+            $course = $section->course;
+            $room = $section->room;
+            
+            return [
+                'section_id' => $section->id,
+                'section_number' => $section->section_number,
+                'course_id' => $course->id,
+                'subject_code' => $course->subject_code,
+                'catalog_number' => $course->catalog_number,
+                'class_descr' => $course->class_descr,
+                'duration_minutes' => $course->duration_minutes,
+                'day10_enrol' => $section->day10_enrol,
+                'total_class_days' => $section->total_class_days ?? 0,
+                'room' => $room ? [
+                    'id' => $room->id,
+                    'capacity' => $room->capacity,
+                    'room_number' => $room->room_number,
+                    'sa_facility_type' => $room->sa_facility_type,
+                    'building' => $room->building ? [
+                        'id' => $room->building->id,
+                        'building_code' => $room->building->building_code,
+                    ] : null,
+                ] : null,
+            ];
+        })->values();
         }
     
         return view('courses.index', compact('sectionsData', 'terms', 'departments', 'campuses', 'facilityTypes'));

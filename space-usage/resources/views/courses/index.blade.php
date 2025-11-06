@@ -211,6 +211,7 @@
                                     <th scope="col" data-sort="numeric">Rooms</th>
                                     <th scope="col" data-sort="numeric">Capacity</th>
                                     <th scope="col" data-sort="numeric">CH</th>
+                                    <th scope="col" data-sort="numeric">Days/<br>Week</th>
                                     <th scope="col" data-sort="numeric">WSCH</th>
                                     <th scope="col" data-sort="numeric">Avg/<br>Sec</th>
                                     <th scope="col" data-sort="numeric">Enroll<br>Growth</th>
@@ -234,53 +235,31 @@
             <!-- Pass raw data to JavaScript -->
             <script>
                 const sectionsData = @json($sectionsData);
-                // Calculate all metrics from raw section data
-                function calculateCourseMetrics(courseData) {
-                    const sections = courseData.sections;
+                
+                // Calculate metrics for individual section
+                function calculateSectionMetrics(sectionData) {
+                    const enrollment = sectionData.day10_enrol || 0;
+                    const capacity = sectionData.room ? (sectionData.room.capacity || 0) : 0;
+                    const contactHours = sectionData.duration_minutes / 60;
+                    const daysPerWeek = sectionData.total_class_days || 0;
                     
-                    // Basic aggregations
-                    const totalEnrollment = sections.reduce((sum, s) => sum + (s.day10_enrol || 0), 0);
-                    const sectionsCount = sections.length;
+                    // WSCH = enrollment * days/week * Contact Hours
+                    const wsch = Math.ceil(enrollment * daysPerWeek * contactHours);
                     
-                    // Get unique rooms and sum capacities
-                    const uniqueRooms = new Map();
-                    sections.forEach(section => {
-                        if (section.room && section.room.id) {
-                            if (!uniqueRooms.has(section.room.id)) {
-                                uniqueRooms.set(section.room.id, section.room.capacity || 0);
-                            }
-                        }
-                    });
+                    // WSCH benchmark = enrollment * 30
+                    const wschBenchmark = Math.round(enrollment * 30);
                     
-                    const roomsUsed = uniqueRooms.size;
-                    const totalCapacity = Array.from(uniqueRooms.values()).reduce((sum, cap) => sum + cap, 0);
-                    const capacityPerRoom = roomsUsed > 0 ? totalCapacity / roomsUsed : 0;
-                    
-                    // Contact hours and WSCH
-                    const contactHours = courseData.duration_minutes / 60;
-                    const totalWsch = Math.ceil((totalEnrollment * courseData.duration_minutes) / 60);
-                    
-                    // Average per section
-                    const avgPerSection = sectionsCount > 0 ? totalEnrollment / sectionsCount : 0;
-                    
-                    // WSCH benchmark calculation
-                    const firstRoomCapacity = courseData.first_room_capacity || 1;
-                    const wschBenchmark = Math.round(32 * (firstRoomCapacity * 0.8) / 10) * 10; // Round to nearest 10
-                    
-                    // Rooms needed
-                    const roomsNeeded = capacityPerRoom > 0 
-                        ? Math.ceil((totalCapacity * 0.75) / capacityPerRoom)
+                    // Rooms Needed = WSCH / WSCH Bench
+                    const roomsNeeded = wschBenchmark > 0 
+                        ? (wsch / wschBenchmark).toFixed(2)
                         : 0;
                     
                     return {
-                        totalEnrollment,
-                        sectionsCount,
-                        roomsUsed,
-                        totalCapacity,
-                        capacityPerRoom,
+                        enrollment,
+                        capacity,
                         contactHours,
-                        totalWsch,
-                        avgPerSection,
+                        daysPerWeek,
+                        wsch,
                         wschBenchmark,
                         roomsNeeded
                     };
@@ -303,25 +282,36 @@
                 function updateForecastGrowth(row, growthPercentage) {
                     const originalEnrollment = parseFloat(row.getAttribute('data-original-enrollment'));
                     const durationMinutes = parseFloat(row.getAttribute('data-duration-minutes'));
-                    const sectionsCount = parseFloat(row.getAttribute('data-sections-count'));
-                    const totalCapacity = parseFloat(row.getAttribute('data-total-capacity'));
-                    const capacityPerRoom = parseFloat(row.getAttribute('data-capacity-per-room'));
+                    const capacity = parseFloat(row.getAttribute('data-capacity'));
+                    const totalClassDays = parseFloat(row.getAttribute('data-total-class-days'));
                     
+                    // Calculate enlarged enrollment
                     const growthEnrollment = Math.round(originalEnrollment * (1 + growthPercentage / 100));
-                    const wschGrowth = Math.ceil((growthEnrollment * durationMinutes) / 60);
-                    const studentsPerSection = sectionsCount > 0 ? (growthEnrollment / sectionsCount).toFixed(2) : '0.00';
-                    const seating75Util = Math.round((growthEnrollment * 0.75));
                     
-                    const roomsNeeded = capacityPerRoom > 0 
-                        ? Math.ceil(seating75Util / capacityPerRoom) 
+                    // WSCH growth = enlarged enrollment * days/week * Contact Hours
+                    const contactHours = durationMinutes / 60;
+                    const wschGrowth = Math.ceil(growthEnrollment * totalClassDays * contactHours);
+                    
+                    const studentsPerSection = growthEnrollment;
+                    
+                    // Seating 75% = enlarged enrollment / 0.75
+                    const seating75Util = Math.round(growthEnrollment / 0.75);
+                    
+                    // WSCH benchmark = enlarged enrollment * 30
+                    const wschBenchmark = Math.round(growthEnrollment * 30);
+                    
+                    // Rooms Needed = WSCH growth / WSCH benchmark
+                    const roomsNeeded = wschBenchmark > 0
+                        ? (wschGrowth / wschBenchmark).toFixed(2)
                         : 0;
                     
                     const seatingRange = getSeatingRange(seating75Util);
                     
                     row.querySelector('.forecast-enroll-growth').textContent = growthEnrollment;
                     row.querySelector('.forecast-wsch-growth').textContent = wschGrowth;
-                    row.querySelector('.forecast-students-per-section').textContent = studentsPerSection;
+                    row.querySelector('.forecast-students-per-section').textContent = studentsPerSection.toFixed(2);
                     row.querySelector('.forecast-seating-75').textContent = seating75Util;
+                    row.querySelector('.wsch-benchmark').textContent = wschBenchmark;
                     row.querySelector('.forecast-labs-needed').textContent = roomsNeeded;
                     row.querySelector('.forecast-seating-range').textContent = seatingRange;
                 }
@@ -333,38 +323,36 @@
                     
                     tbody.innerHTML = '';
                     
-                    sectionsData.forEach(courseData => {
-                        const metrics = calculateCourseMetrics(courseData);
-                        const seatingRange = getSeatingRange(Math.round(metrics.totalCapacity * 0.75));
+                    sectionsData.forEach(sectionData => {
+                        const metrics = calculateSectionMetrics(sectionData);
+                        // Seating range based on enrollment / 0.75
+                        const seatingRange = getSeatingRange(Math.round(metrics.enrollment / 0.75));
                         
                         const row = document.createElement('tr');
                         row.className = 'course-row table-course';
-                        row.setAttribute('data-original-enrollment', metrics.totalEnrollment);
-                        row.setAttribute('data-duration-minutes', courseData.duration_minutes);
-                        row.setAttribute('data-current-rooms', metrics.roomsUsed);
-                        row.setAttribute('data-weekly-contact-hours', metrics.totalWsch);
-                        row.setAttribute('data-sections-count', metrics.sectionsCount);
-                        row.setAttribute('data-total-capacity', metrics.totalCapacity);
-                        row.setAttribute('data-capacity-per-room', metrics.capacityPerRoom.toFixed(2));
-                        row.setAttribute('data-wsch-benchmark', metrics.wschBenchmark);
+                        row.setAttribute('data-original-enrollment', metrics.enrollment);
+                        row.setAttribute('data-duration-minutes', sectionData.duration_minutes);
+                        row.setAttribute('data-capacity', metrics.capacity);
+                        row.setAttribute('data-total-class-days', sectionData.total_class_days || 0);
                         
                         row.innerHTML = `
                             <td>
-                                <a href="/course/${courseData.course_id}">
-                                    ${courseData.subject_code} ${courseData.catalog_number}
+                                <a href="/course/${sectionData.course_id}">
+                                    ${sectionData.subject_code} ${sectionData.catalog_number} - ${sectionData.section_number}
                                 </a>
                             </td>
-                            <td class="forecast-enrollment">${metrics.totalEnrollment}</td>
-                            <td class="forecast-sections">${metrics.sectionsCount}</td>
-                            <td class="forecast-rooms">${metrics.roomsUsed}</td>
-                            <td class="forecast-capacity">${metrics.totalCapacity}</td>
+                            <td class="forecast-enrollment">${metrics.enrollment}</td>
+                            <td class="forecast-sections">1</td>
+                            <td class="forecast-rooms">1</td>
+                            <td class="forecast-capacity">${metrics.capacity}</td>
                             <td class="forecast-contact-hours">${metrics.contactHours.toFixed(2)}</td>
-                            <td class="forecast-wsch">${metrics.totalWsch}</td>
-                            <td class="forecast-avg-per-section">${metrics.avgPerSection.toFixed(2)}</td>
-                            <td class="forecast-enroll-growth">${metrics.totalEnrollment}</td>
-                            <td class="forecast-wsch-growth">${metrics.totalWsch}</td>
-                            <td class="forecast-students-per-section">${metrics.avgPerSection.toFixed(2)}</td>
-                            <td class="forecast-seating-75">${Math.round(metrics.totalCapacity * 0.75)}</td>
+                            <td class="forecast-days-per-week">${sectionData.total_class_days || 0}</td>
+                            <td class="forecast-wsch">${metrics.wsch}</td>
+                            <td class="forecast-avg-per-section">${metrics.enrollment.toFixed(2)}</td>
+                            <td class="forecast-enroll-growth">${metrics.enrollment}</td>
+                            <td class="forecast-wsch-growth">${metrics.wsch}</td>
+                            <td class="forecast-students-per-section">${metrics.enrollment.toFixed(2)}</td>
+                            <td class="forecast-seating-75">${Math.round(metrics.enrollment / 0.75)}</td>
                             <td class="wsch-benchmark">${metrics.wschBenchmark}</td>
                             <td class="forecast-labs-needed">${metrics.roomsNeeded}</td>
                             <td class="forecast-seating-range">${seatingRange}</td>

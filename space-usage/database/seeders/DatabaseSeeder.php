@@ -17,19 +17,19 @@ class DatabaseSeeder extends Seeder
     {
         // Create a test user
         \App\Models\User::firstOrCreate(
-            ['netID' => 'JMK22028'], #I WOULD PUT YOUR NETID HERE SO THAT YOU DONT HAVE TO MANUALLY ADD IT
+            ['netID' => 'jmk22028'], #I WOULD PUT YOUR NETID HERE SO THAT YOU DONT HAVE TO MANUALLY ADD IT
             ['isAdmin' => true]
         );
         \App\Models\User::firstOrCreate(
-            ['netID' => 'JRS06005'], #I WOULD PUT YOUR NETID HERE SO THAT YOU DONT HAVE TO MANUALLY ADD IT
+            ['netID' => 'jrs06005'], #I WOULD PUT YOUR NETID HERE SO THAT YOU DONT HAVE TO MANUALLY ADD IT
             ['isAdmin' => true]
         );
         \App\Models\User::firstOrCreate(
-            ['netID' => 'MAG12023'], #I WOULD PUT YOUR NETID HERE SO THAT YOU DONT HAVE TO MANUALLY ADD IT
+            ['netID' => 'mag12023'], #I WOULD PUT YOUR NETID HERE SO THAT YOU DONT HAVE TO MANUALLY ADD IT
             ['isAdmin' => true]
         );
         \App\Models\User::firstOrCreate(
-            ['netID' => 'BAK11004'], #I WOULD PUT YOUR NETID HERE SO THAT YOU DONT HAVE TO MANUALLY ADD IT
+            ['netID' => 'bak11004'], #I WOULD PUT YOUR NETID HERE SO THAT YOU DONT HAVE TO MANUALLY ADD IT
             ['isAdmin' => true]
         );
     }
