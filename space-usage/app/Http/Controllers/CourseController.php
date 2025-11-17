@@ -20,7 +20,7 @@ class CourseController
             $selectedDepartments = $selectedDepartments === 'all' || $selectedDepartments === '' ? [] : [$selectedDepartments];
         }
         $selectedCampus = request('campus');
-        $selectedFacilityType = request('sa_facility_type', 'all');
+        $selectedFacilityType = request('sa_facility_type');
         $seatUtilization = request('seat_utilization', 75);
     
         $terms = Term::orderBy('term_code')->get();
@@ -75,7 +75,7 @@ class CourseController
             ->pluck('sa_facility_type')
             ->sort();
     
-        $hasAllFilters = !empty($selectedTerm) && !empty($selectedDepartments) && !empty($selectedCampus);
+        $hasAllFilters = !empty($selectedTerm) && !empty($selectedDepartments) && !empty($selectedCampus) && !empty($selectedFacilityType);
     
         $sectionsData = collect();
     
@@ -93,7 +93,7 @@ class CourseController
                 $sections->where('campus_id', $campus->id);
             }
         
-            if ($selectedFacilityType !== 'all') {
+            if ($selectedFacilityType) {
                 $sections->whereHas('room', function ($query) use ($selectedFacilityType) {
                     $query->where('sa_facility_type', $selectedFacilityType);
                 });
@@ -107,10 +107,26 @@ class CourseController
         
             $sectionsDataRaw = $sections->get();
         
-            // Return individual sections instead of grouping by course
-            $sectionsData = $sectionsDataRaw->map(function ($section) {
+            // Return individual sections with calculated metrics
+            $sectionsData = $sectionsDataRaw->map(function ($section) use ($selectedFacilityType, $seatUtilization) {
                 $course = $section->course;
                 $room = $section->room;
+                
+                $enrollment = $section->day10_enrol ?? 0;
+                $capacity = $room ? ($room->capacity ?? 0) : 0;
+                $contactHours = $course->duration_minutes / 60;
+                $daysPerWeek = $section->total_class_days ?? 0;
+                $wsch = ceil($enrollment * $daysPerWeek * $contactHours);
+                $facilityType = $room ? $room->sa_facility_type : $selectedFacilityType;
+                
+                $isLab = $facilityType && stripos($facilityType, 'LAB') !== false;
+                $multiplier = $isLab ? 28 : 30;
+                $wschBenchmark = round($capacity * $multiplier, 2);
+                $roomsNeeded = $wschBenchmark > 0 ? round($wsch / $wschBenchmark, 2) : 0;
+                
+                $seatUtilDecimal = $seatUtilization / 100;
+                $seating75Util = $seatUtilDecimal > 0 ? round($enrollment / $seatUtilDecimal) : 0;
+                $seatingRange = self::getSeatingRange($seating75Util);
                 
                 return [
                     'section_id' => $section->id,
@@ -120,8 +136,19 @@ class CourseController
                     'catalog_number' => $course->catalog_number,
                     'class_descr' => $course->class_descr,
                     'duration_minutes' => $course->duration_minutes,
-                    'day10_enrol' => $section->day10_enrol,
-                    'total_class_days' => $section->total_class_days ?? 0,
+                    'day10_enrol' => $enrollment,
+                    'total_class_days' => $daysPerWeek,
+                    'enrollment' => $enrollment,
+                    'capacity' => $capacity,
+                    'contactHours' => $contactHours,
+                    'daysPerWeek' => $daysPerWeek,
+                    'wsch' => $wsch,
+                    'wschBenchmark' => $wschBenchmark,
+                    'roomsNeeded' => $roomsNeeded,
+                    'seating75Util' => $seating75Util,
+                    'seatingRange' => $seatingRange,
+                    'facilityType' => $facilityType,
+                    'isLab' => $isLab,
                     'room' => $room ? [
                         'id' => $room->id,
                         'capacity' => $room->capacity,
@@ -134,6 +161,37 @@ class CourseController
                     ] : null,
                 ];
             })->values();
+            
+            // Calculate comparison table data
+            $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
+            $calculatedRanges = array_fill_keys($rangeLabels, 0);
+            $currentRanges = array_fill_keys($rangeLabels, 0);
+            
+            foreach ($sectionsData as $section) {
+                $calculatedRange = $section['seatingRange'];
+                if ($calculatedRange !== 'N/A' && isset($calculatedRanges[$calculatedRange])) {
+                    $calculatedRanges[$calculatedRange]++;
+                }
+                
+                if ($section['capacity'] > 0) {
+                    $currentRange = self::getSeatingRange($section['capacity']);
+                    if ($currentRange !== 'N/A' && isset($currentRanges[$currentRange])) {
+                        $currentRanges[$currentRange]++;
+                    }
+                }
+            }
+            
+            $comparisonData = [];
+            foreach ($rangeLabels as $range) {
+                $comparisonData[] = [
+                    'range' => $range,
+                    'calculated' => $calculatedRanges[$range],
+                    'current' => $currentRanges[$range],
+                    'difference' => $calculatedRanges[$range] - $currentRanges[$range],
+                ];
+            }
+        } else {
+            $comparisonData = [];
         }
     
         return view('courses.index', compact(
@@ -143,8 +201,28 @@ class CourseController
             'campuses',
             'facilityTypes',
             'selectedFacilityType',
-            'seatUtilization'
+            'seatUtilization',
+            'comparisonData'
         ));
+    }
+    
+    /**
+     * Get seating range label for a given seating value
+     */
+    private static function getSeatingRange($seatingValue)
+    {
+        if ($seatingValue <= 0) return 'N/A';
+        if ($seatingValue <= 25) return '0-25';
+        if ($seatingValue <= 49) return '26-49';
+        if ($seatingValue <= 74) return '50-74';
+        if ($seatingValue <= 124) return '75-124';
+        if ($seatingValue <= 174) return '125-174';
+        if ($seatingValue <= 224) return '175-224';
+        if ($seatingValue <= 249) return '225-249';
+        if ($seatingValue <= 299) return '250-299';
+        if ($seatingValue <= 349) return '300-349';
+        if ($seatingValue <= 399) return '350-399';
+        return '400+';
     }
 
     /**
@@ -171,7 +249,7 @@ class CourseController
             ->when($campus, function ($query) use ($campus) {
                 $query->where('campus_id', $campus);
             })
-            ->when($facilityType && $facilityType !== 'all', function ($query) use ($facilityType) {
+            ->when($facilityType, function ($query) use ($facilityType) {
                 $query->whereHas('room', function ($q) use ($facilityType) {
                     $q->where('sa_facility_type', $facilityType);
                 });
@@ -191,7 +269,7 @@ class CourseController
                     $q->where('term_id', $term);
                 });
             })
-            ->when($facilityType && $facilityType !== 'all', function ($query) use ($facilityType) {
+            ->when($facilityType, function ($query) use ($facilityType) {
                 $query->whereHas('room', function ($q) use ($facilityType) {
                     $q->where('sa_facility_type', $facilityType);
                 });
