@@ -27,7 +27,7 @@
                     <div class="col-md-6 mb-3">
                         <label for="departmentFilter" class="form-label">Filter by Department <span class="text-danger">*</span></label>
                         <select name="department" id="departmentFilter" class="form-select" required>
-                            <option value="">-- Select Department --</option>
+                            <option value="all" @selected(request('department', 'all') == 'all')>All</option>
                             @foreach ($departments as $department)
                                 <option @selected($department == request('department')) value="{{ $department }}">{{ $department }}</option>
                             @endforeach
@@ -94,8 +94,8 @@
                         });
                     }
                     
-                    // Restore or clear value (special handling for 'all' in facilityType)
-                    const isSpecialValue = filterType === 'facilityType' && savedValue === 'all';
+                    // Restore or clear value (special handling for 'all' in facilityType and department)
+                    const isSpecialValue = (filterType === 'facilityType' || filterType === 'department') && savedValue === 'all';
                     const exists = isSpecialValue || (isObject 
                         ? data[dataKey] && data[dataKey].some(c => String(c.id) === String(savedValue))
                         : data[dataKey] && data[dataKey].includes(savedValue));
@@ -135,17 +135,17 @@
                         if (values.term) {
                             const params = new URLSearchParams();
                             params.append('term', values.term);
-                            await updateDropdown('department', params, 'departments', '<option value="">-- Select Department --</option>', false);
+                            await updateDropdown('department', params, 'departments', '<option value="all">All</option>', false);
                         } else {
-                            restoreDropdown('department', values.department);
+                            restoreDropdown('department', values.department, 'all');
                         }
                         
                         // Update campuses
                         const currentDept = filters.department.value;
-                        if (values.term || currentDept) {
+                        if (values.term || (currentDept && currentDept !== 'all')) {
                             const params = new URLSearchParams();
                             if (values.term) params.append('term', values.term);
-                            if (currentDept) params.append('department', currentDept);
+                            if (currentDept && currentDept !== 'all') params.append('department', currentDept);
                             await updateDropdown('campus', params, 'campuses', '<option value="">-- Select Campus --</option>', true, () => {
                                 filters.facilityType.value = 'all';
                             });
@@ -155,10 +155,10 @@
                         
                         // Update facility types
                         const currentCampus = filters.campus.value;
-                        if (values.term || currentDept || currentCampus) {
+                        if (values.term || (currentDept && currentDept !== 'all') || currentCampus) {
                             const params = new URLSearchParams();
                             if (values.term) params.append('term', values.term);
-                            if (currentDept) params.append('department', currentDept);
+                            if (currentDept && currentDept !== 'all') params.append('department', currentDept);
                             if (currentCampus) params.append('campus', currentCampus);
                             await updateDropdown('facilityType', params, 'facilityTypes', '<option value="all">All</option>', false);
                         } else {
@@ -196,6 +196,11 @@
                         <input type="number" id="enrollmentIncrease" class="form-control" value="0" min="0"
                             max="100" step="1">
                     </div>
+                    <div class="mb-3">
+                        <label for="percentrageIncrease" class="form-label">Seat Utilzation(%)</label>
+                        <input type="number" id="percentrageIncrease" class="form-control" value="75" min="0"
+                            max="100" step="1">
+                    </div>
 
                     @if ($sectionsData->isEmpty())
                         <p>No courses available.</p>
@@ -213,10 +218,8 @@
                                     <th scope="col" data-sort="numeric">CH</th>
                                     <th scope="col" data-sort="numeric">Days/<br>Week</th>
                                     <th scope="col" data-sort="numeric">WSCH</th>
-                                    <th scope="col" data-sort="numeric">Avg/<br>Sec</th>
                                     <th scope="col" data-sort="numeric">Enroll<br>Growth</th>
                                     <th scope="col" data-sort="numeric">WSCH<br>Growth</th>
-                                    <th scope="col" data-sort="numeric">Stu/<br>Sec</th>
                                     <th scope="col" data-sort="numeric">Seat<br>@75%</th>
                                     <th scope="col" data-sort="numeric">WSCH<br>Bench</th>
                                     <th scope="col" data-sort="numeric">Rooms<br>Needed</th>
@@ -244,10 +247,12 @@
                     const daysPerWeek = sectionData.total_class_days || 0;
                     
                     // WSCH = enrollment * days/week * Contact Hours
-                    const wsch = Math.ceil(enrollment * daysPerWeek * contactHours);
+                    const wsch = parseFloat((enrollment * daysPerWeek * contactHours).toFixed(2));
                     
                     // WSCH benchmark = enrollment * 30
-                    const wschBenchmark = Math.round(enrollment * 30);
+
+                    // Maybe should be capacity?
+                    const wschBenchmark = parseFloat((capacity * 30).toFixed(2));
                     
                     // Rooms Needed = WSCH / WSCH Bench
                     const roomsNeeded = wschBenchmark > 0 
@@ -278,27 +283,34 @@
                     return '400+';
                 }
                 
+                // Get seat utilization as decimal (e.g., 75 becomes 0.75)
+                function getSeatUtilizationDecimal() {
+                    const seatUtilInput = document.querySelector('#percentrageIncrease');
+                    const seatUtilPercent = parseFloat(seatUtilInput?.value) || 75;
+                    return seatUtilPercent / 100;
+                }
+                
                 // Handle user input updates for enrollment increase
                 function updateForecastGrowth(row, growthPercentage) {
                     const originalEnrollment = parseFloat(row.getAttribute('data-original-enrollment'));
                     const durationMinutes = parseFloat(row.getAttribute('data-duration-minutes'));
                     const capacity = parseFloat(row.getAttribute('data-capacity'));
                     const totalClassDays = parseFloat(row.getAttribute('data-total-class-days'));
-                    
                     // Calculate enlarged enrollment
                     const growthEnrollment = Math.round(originalEnrollment * (1 + growthPercentage / 100));
                     
                     // WSCH growth = enlarged enrollment * days/week * Contact Hours
                     const contactHours = durationMinutes / 60;
-                    const wschGrowth = Math.ceil(growthEnrollment * totalClassDays * contactHours);
+                    const wschGrowth = parseFloat((growthEnrollment * totalClassDays * contactHours).toFixed(2));
                     
-                    const studentsPerSection = growthEnrollment;
-                    
-                    // Seating 75% = enlarged enrollment / 0.75
-                    const seating75Util = Math.round(growthEnrollment / 0.75);
+                    // Seating at utilization % = enlarged enrollment / utilization decimal
+                    const seatUtilDecimal = getSeatUtilizationDecimal();
+                    const seating75Util = seatUtilDecimal > 0 
+                        ? Math.round(growthEnrollment / seatUtilDecimal)
+                        : 0;
                     
                     // WSCH benchmark = enlarged enrollment * 30
-                    const wschBenchmark = Math.round(growthEnrollment * 30);
+                    const wschBenchmark = parseFloat((seating75Util * 30).toFixed(2));
                     
                     // Rooms Needed = WSCH growth / WSCH benchmark
                     const roomsNeeded = wschBenchmark > 0
@@ -308,8 +320,7 @@
                     const seatingRange = getSeatingRange(seating75Util);
                     
                     row.querySelector('.forecast-enroll-growth').textContent = growthEnrollment;
-                    row.querySelector('.forecast-wsch-growth').textContent = wschGrowth;
-                    row.querySelector('.forecast-students-per-section').textContent = studentsPerSection.toFixed(2);
+                    row.querySelector('.forecast-wsch-growth').textContent = Math.ceil(wschGrowth);
                     row.querySelector('.forecast-seating-75').textContent = seating75Util;
                     row.querySelector('.wsch-benchmark').textContent = wschBenchmark;
                     row.querySelector('.forecast-labs-needed').textContent = roomsNeeded;
@@ -323,10 +334,15 @@
                     
                     tbody.innerHTML = '';
                     
+                    const seatUtilDecimal = getSeatUtilizationDecimal();
+                    
                     sectionsData.forEach(sectionData => {
                         const metrics = calculateSectionMetrics(sectionData);
-                        // Seating range based on enrollment / 0.75
-                        const seatingRange = getSeatingRange(Math.round(metrics.enrollment / 0.75));
+                        // Seating range based on enrollment / utilization decimal
+                        const seating75Util = seatUtilDecimal > 0 
+                            ? Math.round(metrics.enrollment / seatUtilDecimal)
+                            : 0;
+                        const seatingRange = getSeatingRange(seating75Util);
                         
                         const row = document.createElement('tr');
                         row.className = 'course-row table-course';
@@ -348,11 +364,9 @@
                             <td class="forecast-contact-hours">${metrics.contactHours.toFixed(2)}</td>
                             <td class="forecast-days-per-week">${sectionData.total_class_days || 0}</td>
                             <td class="forecast-wsch">${metrics.wsch}</td>
-                            <td class="forecast-avg-per-section">${metrics.enrollment.toFixed(2)}</td>
                             <td class="forecast-enroll-growth">${metrics.enrollment}</td>
                             <td class="forecast-wsch-growth">${metrics.wsch}</td>
-                            <td class="forecast-students-per-section">${metrics.enrollment.toFixed(2)}</td>
-                            <td class="forecast-seating-75">${Math.round(metrics.enrollment / 0.75)}</td>
+                            <td class="forecast-seating-75">${seating75Util}</td>
                             <td class="wsch-benchmark">${metrics.wschBenchmark}</td>
                             <td class="forecast-labs-needed">${metrics.roomsNeeded}</td>
                             <td class="forecast-seating-range">${seatingRange}</td>
@@ -374,6 +388,17 @@
                         const increase = parseFloat(this.value) || 0;
                         document.querySelectorAll('.course-row').forEach(row => {
                             updateForecastGrowth(row, increase);
+                        });
+                    });
+                }
+                
+                // Handle seat utilization input
+                const seatUtilInput = document.querySelector('#percentrageIncrease');
+                if (seatUtilInput) {
+                    seatUtilInput.addEventListener('input', function() {
+                        const enrollmentIncrease = parseFloat(forecastInput?.value) || 0;
+                        document.querySelectorAll('.course-row').forEach(row => {
+                            updateForecastGrowth(row, enrollmentIncrease);
                         });
                     });
                 }

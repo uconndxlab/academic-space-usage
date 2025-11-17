@@ -15,7 +15,7 @@ class CourseController
     public function index()
     {
         $selectedTerm = request('term');
-        $selectedDepartment = request('department');
+        $selectedDepartment = request('department', 'all');
         $selectedCampus = request('campus');
         $selectedFacilityType = request('sa_facility_type', 'all');
     
@@ -38,7 +38,7 @@ class CourseController
                     $q->where('term_id', $selectedTerm);
                 });
             })
-            ->when($selectedDepartment, function ($query) use ($selectedDepartment) {
+            ->when($selectedDepartment && $selectedDepartment !== 'all', function ($query) use ($selectedDepartment) {
                 $query->whereHas('course', function ($q) use ($selectedDepartment) {
                     $q->where('subject_code', $selectedDepartment);
                 });
@@ -95,10 +95,12 @@ class CourseController
                     $query->where('sa_facility_type', $selectedFacilityType);
                 });
             }
-        
-            $sections->whereHas('course', function ($query) use ($selectedDepartment) {
-                $query->where('subject_code', $selectedDepartment);
-            });
+            
+            if ($selectedDepartment !== 'all') {
+                $sections->whereHas('course', function ($query) use ($selectedDepartment) {
+                    $query->where('subject_code', $selectedDepartment);
+                });
+            }
         
         // Return individual sections instead of grouping by course
         $sectionsData = $sections->get()->map(function ($section) {
@@ -178,7 +180,7 @@ class CourseController
                     $q->where('sa_facility_type', $facilityType);
                 });
             })
-            ->when($department, function ($query) use ($department) {
+            ->when($department && $department !== 'all', function ($query) use ($department) {
                 $query->whereHas('course', function ($q) use ($department) {
                     $q->where('subject_code', $department);
                 });
