@@ -3,14 +3,17 @@
 @section('content')
     @php
         $selectedFacilityType = request('sa_facility_type', 'all');
-        $hasAllFilters = request()->has('term') && request()->has('department') && request()->has('campus') 
-            && request('term') !== '' && request('department') !== '' && request('campus') !== '';
+        $selectedDepartments = request('department', []);
+        if (!is_array($selectedDepartments)) {
+            $selectedDepartments = $selectedDepartments === 'all' || $selectedDepartments === '' ? [] : [$selectedDepartments];
+        }
+        $hasAllFilters = request()->has('term') && !empty($selectedDepartments) && request()->has('campus') 
+            && request('term') !== '' && request('campus') !== '';
     @endphp
 
     <div class="container">
         <h1 class="mb-4">Course List</h1>
 
-        <!-- Filter Form -->
         <div class="mb-4">
             <form method="GET" action="{{ route('courses.index') }}" id="filterForm">
                 <div class="row">
@@ -26,12 +29,36 @@
 
                     <div class="col-md-6 mb-3">
                         <label for="departmentFilter" class="form-label">Filter by Department <span class="text-danger">*</span></label>
-                        <select name="department" id="departmentFilter" class="form-select" required>
-                            <option value="all" @selected(request('department', 'all') == 'all')>All</option>
-                            @foreach ($departments as $department)
-                                <option @selected($department == request('department')) value="{{ $department }}">{{ $department }}</option>
-                            @endforeach
-                        </select>
+                        <div class="dropdown" id="departmentDropdown">
+                            <button class="form-select text-start" type="button" id="departmentFilterButton" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span id="departmentFilterText">Select Departments</span>
+                            </button>
+                            <ul class="dropdown-menu w-100 p-2" id="departmentDropdownMenu" style="max-height: 300px; overflow-y: auto;" onclick="event.stopPropagation();">
+                                <li class="px-2 py-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="selectAllDepartments">
+                                        <label class="form-check-label fw-bold" for="selectAllDepartments">
+                                            Select All
+                                        </label>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                @foreach ($departments as $department)
+                                <li class="px-2 py-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input department-checkbox" type="checkbox" 
+                                            name="department[]" 
+                                            value="{{ $department }}" 
+                                            id="dept_{{ $loop->index }}"
+                                            @checked(in_array($department, $selectedDepartments))>
+                                        <label class="form-check-label" for="dept_{{ $loop->index }}">
+                                            {{ $department }}
+                                        </label>
+                                    </div>
+                                </li>
+                                @endforeach
+                            </ul>
+                        </div>
                     </div>
 
                     <div class="col-md-6 mb-3">
@@ -53,31 +80,169 @@
                             @endforeach
                         </select>
                     </div>
+
                 </div>
 
                 <div class="mt-3">
-                    <input type="submit" value="Filter" class="btn btn-primary">
+                    <input type="submit" value="Filter" class="btn btn-primary" id="filterSubmit">
                 </div>
             </form>
+            
+            <script>
+                document.getElementById('filterForm').addEventListener('submit', function(e) {
+                    const selectedDepts = Array.from(document.querySelectorAll('.department-checkbox:checked')).map(cb => cb.value);
+                    if (selectedDepts.length === 0) {
+                        e.preventDefault();
+                        alert('Please select at least one department.');
+                        return false;
+                    }
+                });
+            </script>
         </div>
 
-        <!-- Dynamic filtering script -->
+        <style>
+            #departmentDropdownMenu {
+                min-width: 100%;
+            }
+            #departmentDropdownMenu .form-check-input:checked {
+                background-color: #0d6efd;
+                border-color: #0d6efd;
+            }
+            #departmentDropdownMenu .form-check {
+                cursor: pointer;
+            }
+            #departmentDropdownMenu .form-check-label {
+                cursor: pointer;
+                user-select: none;
+            }
+        </style>
         <script>
             (function() {
                 const filters = {
                     term: document.querySelector('#termFilter'),
-                    department: document.querySelector('#departmentFilter'),
                     campus: document.querySelector('#campusFilter'),
                     facilityType: document.querySelector('#facilityTypeFilter')
                 };
                 
+                const departmentFilterButton = document.querySelector('#departmentFilterButton');
+                const departmentFilterText = document.querySelector('#departmentFilterText');
+                
+                function getDepartmentCheckboxes() {
+                    return document.querySelectorAll('.department-checkbox');
+                }
+                
+                function updateDepartmentFilterText() {
+                    const checkboxes = getDepartmentCheckboxes();
+                    const checked = Array.from(checkboxes).filter(cb => cb.checked);
+                    if (checked.length === 0) {
+                        departmentFilterText.textContent = 'Select Departments';
+                        departmentFilterButton.classList.add('text-muted');
+                    } else if (checked.length === checkboxes.length) {
+                        departmentFilterText.textContent = 'All Departments (' + checked.length + ')';
+                        departmentFilterButton.classList.remove('text-muted');
+                    } else {
+                        departmentFilterText.textContent = checked.length + ' Department' + (checked.length > 1 ? 's' : '') + ' Selected';
+                        departmentFilterButton.classList.remove('text-muted');
+                    }
+                }
+                
+                function updateSelectAllState() {
+                    const checkboxes = getDepartmentCheckboxes();
+                    const checked = Array.from(checkboxes).filter(cb => cb.checked);
+                    const currentSelectAll = document.querySelector('#selectAllDepartments');
+                    if (currentSelectAll) {
+                        currentSelectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+                        currentSelectAll.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+                    }
+                }
+                
+                function attachDepartmentEventListeners() {
+                    const checkboxes = getDepartmentCheckboxes();
+                    const currentSelectAll = document.querySelector('#selectAllDepartments');
+                    
+                    if (currentSelectAll) {
+                        currentSelectAll.removeEventListener('change', handleSelectAll);
+                        currentSelectAll.addEventListener('change', handleSelectAll);
+                    }
+                    
+                    checkboxes.forEach(checkbox => {
+                        checkbox.removeEventListener('change', handleDepartmentChange);
+                        checkbox.addEventListener('change', handleDepartmentChange);
+                    });
+                }
+                
+                function handleSelectAll(e) {
+                    const checkboxes = getDepartmentCheckboxes();
+                    checkboxes.forEach(cb => {
+                        cb.checked = e.target.checked;
+                    });
+                    updateDepartmentFilterText();
+                    updateFilterOptions();
+                }
+                
+                function handleDepartmentChange() {
+                    updateSelectAllState();
+                    updateDepartmentFilterText();
+                    updateFilterOptions();
+                }
+                
+                attachDepartmentEventListeners();
+                
+                updateDepartmentFilterText();
+                updateSelectAllState();
+                
                 const originals = {
-                    department: Array.from(filters.department.options),
                     campus: Array.from(filters.campus.options),
                     facilityType: Array.from(filters.facilityType.options)
                 };
                 
-                // Generic function to update dropdown options
+                async function updateDepartmentDropdown(params) {
+                    const response = await fetch('{{ route("courses.filterOptions") }}?' + params.toString());
+                    const data = await response.json();
+                    
+                    const dropdownMenu = document.querySelector('#departmentDropdownMenu');
+                    const checkedDepartments = Array.from(getDepartmentCheckboxes())
+                        .filter(cb => cb.checked)
+                        .map(cb => cb.value);
+                    
+                    dropdownMenu.innerHTML = `
+                        <li class="px-2 py-1">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="selectAllDepartments">
+                                <label class="form-check-label fw-bold" for="selectAllDepartments">
+                                    Select All
+                                </label>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                    `;
+                    
+                    if (data.departments && data.departments.length > 0) {
+                        data.departments.forEach((dept, index) => {
+                            const li = document.createElement('li');
+                            li.className = 'px-2 py-1';
+                            const isChecked = checkedDepartments.includes(dept);
+                            li.innerHTML = `
+                                <div class="form-check">
+                                    <input class="form-check-input department-checkbox" type="checkbox" 
+                                        name="department[]" 
+                                        value="${dept}" 
+                                        id="dept_${index}"
+                                        ${isChecked ? 'checked' : ''}>
+                                    <label class="form-check-label" for="dept_${index}">
+                                        ${dept}
+                                    </label>
+                                </div>
+                            `;
+                            dropdownMenu.appendChild(li);
+                        });
+                    }
+                    
+                    attachDepartmentEventListeners();
+                    updateSelectAllState();
+                    updateDepartmentFilterText();
+                }
+                
                 async function updateDropdown(filterType, params, dataKey, placeholder, isObject, onReset) {
                     const filter = filters[filterType];
                     const savedValue = filter.value;
@@ -94,8 +259,7 @@
                         });
                     }
                     
-                    // Restore or clear value (special handling for 'all' in facilityType and department)
-                    const isSpecialValue = (filterType === 'facilityType' || filterType === 'department') && savedValue === 'all';
+                    const isSpecialValue = filterType === 'facilityType' && savedValue === 'all';
                     const exists = isSpecialValue || (isObject 
                         ? data[dataKey] && data[dataKey].some(c => String(c.id) === String(savedValue))
                         : data[dataKey] && data[dataKey].includes(savedValue));
@@ -108,7 +272,6 @@
                     }
                 }
                 
-                // Restore original dropdown options
                 function restoreDropdown(filterType, savedValue, defaultValue = '') {
                     const filter = filters[filterType];
                     filter.innerHTML = '';
@@ -122,30 +285,32 @@
                     }
                 }
                 
+                function getSelectedDepartments() {
+                    return Array.from(document.querySelectorAll('.department-checkbox:checked')).map(cb => cb.value);
+                }
+                
                 async function updateFilterOptions() {
                     const values = {
                         term: filters.term.value,
-                        department: filters.department.value,
+                        departments: getSelectedDepartments(),
                         campus: filters.campus.value,
                         facilityType: filters.facilityType.value
                     };
                     
                     try {
-                        // Update departments
                         if (values.term) {
                             const params = new URLSearchParams();
                             params.append('term', values.term);
-                            await updateDropdown('department', params, 'departments', '<option value="all">All</option>', false);
-                        } else {
-                            restoreDropdown('department', values.department, 'all');
+                            await updateDepartmentDropdown(params);
                         }
                         
-                        // Update campuses
-                        const currentDept = filters.department.value;
-                        if (values.term || (currentDept && currentDept !== 'all')) {
+                        const selectedDepts = getSelectedDepartments();
+                        if (values.term || selectedDepts.length > 0) {
                             const params = new URLSearchParams();
                             if (values.term) params.append('term', values.term);
-                            if (currentDept && currentDept !== 'all') params.append('department', currentDept);
+                            selectedDepts.forEach(dept => {
+                                params.append('department[]', dept);
+                            });
                             await updateDropdown('campus', params, 'campuses', '<option value="">-- Select Campus --</option>', true, () => {
                                 filters.facilityType.value = 'all';
                             });
@@ -153,12 +318,13 @@
                             restoreDropdown('campus', values.campus);
                         }
                         
-                        // Update facility types
                         const currentCampus = filters.campus.value;
-                        if (values.term || (currentDept && currentDept !== 'all') || currentCampus) {
+                        if (values.term || selectedDepts.length > 0 || currentCampus) {
                             const params = new URLSearchParams();
                             if (values.term) params.append('term', values.term);
-                            if (currentDept && currentDept !== 'all') params.append('department', currentDept);
+                            selectedDepts.forEach(dept => {
+                                params.append('department[]', dept);
+                            });
                             if (currentCampus) params.append('campus', currentCampus);
                             await updateDropdown('facilityType', params, 'facilityTypes', '<option value="all">All</option>', false);
                         } else {
@@ -169,18 +335,13 @@
                     }
                 }
                 
-                // Event listeners
-                Object.keys(filters).forEach(key => {
-                    if (filters[key]) {
-                        filters[key].addEventListener('change', () => {
-                            if (key === 'campus') setTimeout(updateFilterOptions, 0);
-                            else updateFilterOptions();
-                        });
-                    }
+                filters.term?.addEventListener('change', updateFilterOptions);
+                filters.campus?.addEventListener('change', () => {
+                    setTimeout(updateFilterOptions, 0);
                 });
+                filters.facilityType?.addEventListener('change', updateFilterOptions);
                 
-                // Initialize
-                if (Object.values(filters).some(f => f && f.value)) {
+                if (filters.term?.value || getSelectedDepartments().length > 0) {
                     updateFilterOptions();
                 }
             })();
@@ -188,73 +349,109 @@
 
         @if($hasAllFilters)
         <div id="results">
-            <div class="card mt-4">
-                <div class="card-body">
-                    <!-- Enrollment Increase Input -->
-                    <div class="mb-3">
-                        <label for="enrollmentIncrease" class="form-label">Enrollment Increase (%)</label>
-                        <input type="number" id="enrollmentIncrease" class="form-control" value="0" min="0"
-                            max="100" step="1">
-                    </div>
-                    <div class="mb-3">
-                        <label for="percentrageIncrease" class="form-label">Seat Utilzation(%)</label>
-                        <input type="number" id="percentrageIncrease" class="form-control" value="75" min="0"
-                            max="100" step="1">
-                    </div>
+            <ul class="nav nav-tabs mb-3" id="viewTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="table-tab" data-bs-toggle="tab" data-bs-target="#table-view" type="button" role="tab" aria-controls="table-view" aria-selected="true">
+                        Table View
+                    </button>
+                </li>
+                @if($selectedFacilityType !== 'all' && !empty($selectedFacilityType))
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="compare-tab" data-bs-toggle="tab" data-bs-target="#compare-view" type="button" role="tab" aria-controls="compare-view" aria-selected="false">
+                        Compare View
+                    </button>
+                </li>
+                @endif
+            </ul>
 
-                    @if ($sectionsData->isEmpty())
-                        <p>No courses available.</p>
-                    @else
-                    <!-- Forecast Table -->
-                    <div class="table-scroll-wrapper">
-                        <table class="table table-striped table-hover table-sm sticky-header-table">
-                            <thead>
-                                <tr class="table-primary">
-                                    <th scope="col" data-sort="text">Course</th>
-                                    <th scope="col" data-sort="numeric">Enroll</th>
-                                    <th scope="col" data-sort="numeric">Sec</th>
-                                    <th scope="col" data-sort="numeric">Rooms</th>
-                                    <th scope="col" data-sort="numeric">Capacity</th>
-                                    <th scope="col" data-sort="numeric">CH</th>
-                                    <th scope="col" data-sort="numeric">Days/<br>Week</th>
-                                    <th scope="col" data-sort="numeric">WSCH</th>
-                                    <th scope="col" data-sort="numeric">Enroll<br>Growth</th>
-                                    <th scope="col" data-sort="numeric">WSCH<br>Growth</th>
-                                    <th scope="col" data-sort="numeric">Seat<br>@75%</th>
-                                    <th scope="col" data-sort="numeric">WSCH<br>Bench</th>
-                                    <th scope="col" data-sort="numeric">Rooms<br>Needed</th>
-                                    <th scope="col" data-sort="text">Seat<br>Range</th>
-                                </tr>
-                            </thead>
-                            <tbody id="coursesTableBody">
-                                <!-- Rows will be generated by JavaScript -->
-                            </tbody>
-                        </table>
+            <div class="tab-content" id="viewTabsContent">
+                <div class="tab-pane fade show active" id="table-view" role="tabpanel" aria-labelledby="table-tab">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="enrollmentIncrease" class="form-label">Enrollment Increase (%)</label>
+                                <input type="number" id="enrollmentIncrease" class="form-control" value="0" min="0"
+                                    max="100" step="1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="percentrageIncrease" class="form-label">Seat Utilization(%)</label>
+                                <input type="number" id="percentrageIncrease" class="form-control" value="{{ $seatUtilization ?? 75 }}" min="0"
+                                    max="100" step="1">
+                            </div>
+
+                            @if ($sectionsData->isEmpty())
+                                <p>No courses available.</p>
+                            @else
+                            <div class="table-scroll-wrapper">
+                                <table class="table table-striped table-hover table-sm sticky-header-table">
+                                    <thead>
+                                        <tr class="table-primary">
+                                            <th scope="col" data-sort="text">Course</th>
+                                            <th scope="col" data-sort="numeric">Enroll</th>
+                                            <th scope="col" data-sort="numeric">Sec</th>
+                                            <th scope="col" data-sort="numeric">Rooms</th>
+                                            <th scope="col" data-sort="numeric">Capacity</th>
+                                            <th scope="col" data-sort="numeric">CH</th>
+                                            <th scope="col" data-sort="numeric">Days/<br>Week</th>
+                                            <th scope="col" data-sort="numeric">WSCH</th>
+                                            <th scope="col" data-sort="numeric">Enroll<br>Growth</th>
+                                            <th scope="col" data-sort="numeric">WSCH<br>Growth</th>
+                                            <th scope="col" data-sort="numeric">Seat<br>@75%</th>
+                                            <th scope="col" data-sort="numeric">WSCH<br>Bench</th>
+                                            <th scope="col" data-sort="numeric">Rooms<br>Needed</th>
+                                            <th scope="col" data-sort="text">Seat<br>Range</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="coursesTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                            @endif
+                        </div>
                     </div>
-                    @endif
                 </div>
+
+                @if($selectedFacilityType !== 'all' && !empty($selectedFacilityType))
+                <div class="tab-pane fade" id="compare-view" role="tabpanel" aria-labelledby="compare-tab">
+                    <div class="card">
+                        <div class="card-body">
+                            <h2 class="mb-4">Seat Range Comparison</h2>
+                            <p class="text-muted mb-4">
+                                This comparison shows the distribution of sections across seat ranges.
+                                <strong>Calculated Range</strong> is based on enrollment divided by seat utilization ({{ $seatUtilization ?? 75 }}%), using the "Seat @75%" value shown in the table.
+                                <strong>Current Range</strong> is based on the actual room capacity.
+                            </p>
+
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover table-sm">
+                                    <thead>
+                                        <tr class="table-primary">
+                                            <th scope="col">Seat Range</th>
+                                            <th scope="col" class="text-end">Calculated Count</th>
+                                            <th scope="col" class="text-end">Current Count</th>
+                                            <th scope="col" class="text-end">Difference</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="comparisonTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
             </div>
             
-            <!-- Pass raw data to JavaScript -->
             <script>
                 const sectionsData = @json($sectionsData);
                 
-                // Calculate metrics for individual section
                 function calculateSectionMetrics(sectionData) {
                     const enrollment = sectionData.day10_enrol || 0;
                     const capacity = sectionData.room ? (sectionData.room.capacity || 0) : 0;
                     const contactHours = sectionData.duration_minutes / 60;
                     const daysPerWeek = sectionData.total_class_days || 0;
-                    
-                    // WSCH = enrollment * days/week * Contact Hours
-                    const wsch = parseFloat((enrollment * daysPerWeek * contactHours).toFixed(2));
-                    
-                    // WSCH benchmark = enrollment * 30
-
-                    // Maybe should be capacity?
+                    const wsch = Math.ceil((enrollment * daysPerWeek * contactHours));
                     const wschBenchmark = parseFloat((capacity * 30).toFixed(2));
-                    
-                    // Rooms Needed = WSCH / WSCH Bench
                     const roomsNeeded = wschBenchmark > 0 
                         ? (wsch / wschBenchmark).toFixed(2)
                         : 0;
@@ -270,7 +467,6 @@
                     };
                 }
                 
-                // Get seating range from seat count at 75% utilization
                 function getSeatingRange(seating75Util) {
                     if (seating75Util <= 0) return 'N/A';
                     const ranges = [
@@ -283,36 +479,24 @@
                     return '400+';
                 }
                 
-                // Get seat utilization as decimal (e.g., 75 becomes 0.75)
                 function getSeatUtilizationDecimal() {
                     const seatUtilInput = document.querySelector('#percentrageIncrease');
                     const seatUtilPercent = parseFloat(seatUtilInput?.value) || 75;
                     return seatUtilPercent / 100;
                 }
                 
-                // Handle user input updates for enrollment increase
                 function updateForecastGrowth(row, growthPercentage) {
                     const originalEnrollment = parseFloat(row.getAttribute('data-original-enrollment'));
                     const durationMinutes = parseFloat(row.getAttribute('data-duration-minutes'));
-                    const capacity = parseFloat(row.getAttribute('data-capacity'));
                     const totalClassDays = parseFloat(row.getAttribute('data-total-class-days'));
-                    // Calculate enlarged enrollment
                     const growthEnrollment = Math.round(originalEnrollment * (1 + growthPercentage / 100));
-                    
-                    // WSCH growth = enlarged enrollment * days/week * Contact Hours
                     const contactHours = durationMinutes / 60;
                     const wschGrowth = parseFloat((growthEnrollment * totalClassDays * contactHours).toFixed(2));
-                    
-                    // Seating at utilization % = enlarged enrollment / utilization decimal
                     const seatUtilDecimal = getSeatUtilizationDecimal();
                     const seating75Util = seatUtilDecimal > 0 
                         ? Math.round(growthEnrollment / seatUtilDecimal)
                         : 0;
-                    
-                    // WSCH benchmark = enlarged enrollment * 30
                     const wschBenchmark = parseFloat((seating75Util * 30).toFixed(2));
-                    
-                    // Rooms Needed = WSCH growth / WSCH benchmark
                     const roomsNeeded = wschBenchmark > 0
                         ? (wschGrowth / wschBenchmark).toFixed(2)
                         : 0;
@@ -327,7 +511,6 @@
                     row.querySelector('.forecast-seating-range').textContent = seatingRange;
                 }
                 
-                // Generate table rows from raw data
                 function generateTableRows() {
                     const tbody = document.getElementById('coursesTableBody');
                     if (!tbody || !sectionsData) return;
@@ -338,7 +521,6 @@
                     
                     sectionsData.forEach(sectionData => {
                         const metrics = calculateSectionMetrics(sectionData);
-                        // Seating range based on enrollment / utilization decimal
                         const seating75Util = seatUtilDecimal > 0 
                             ? Math.round(metrics.enrollment / seatUtilDecimal)
                             : 0;
@@ -376,44 +558,110 @@
                     });
                 }
                 
-                // Initialize table on page load
                 if (document.getElementById('coursesTableBody')) {
                     generateTableRows();
                 }
                 
-                // Handle enrollment increase input
-                const forecastInput = document.querySelector('#enrollmentIncrease');
-                if (forecastInput) {
-                    forecastInput.addEventListener('input', function() {
-                        const increase = parseFloat(this.value) || 0;
-                        document.querySelectorAll('.course-row').forEach(row => {
-                            updateForecastGrowth(row, increase);
-                        });
+                function updateComparisonTable() {
+                    const comparisonTbody = document.getElementById('comparisonTableBody');
+                    if (!comparisonTbody || !sectionsData) return;
+                    
+                    const rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
+                    const calculatedRanges = {};
+                    const currentRanges = {};
+                    
+                    rangeLabels.forEach(range => {
+                        calculatedRanges[range] = 0;
+                        currentRanges[range] = 0;
                     });
+                    
+                    const seatUtilDecimal = getSeatUtilizationDecimal();
+                    
+                    sectionsData.forEach(sectionData => {
+                        const metrics = calculateSectionMetrics(sectionData);
+                        const seating75Util = seatUtilDecimal > 0 
+                            ? Math.round(metrics.enrollment / seatUtilDecimal)
+                            : 0;
+                        const calculatedRange = getSeatingRange(seating75Util);
+                        
+                        if (calculatedRange !== 'N/A' && calculatedRanges.hasOwnProperty(calculatedRange)) {
+                            calculatedRanges[calculatedRange]++;
+                        }
+                        
+                        if (metrics.capacity > 0) {
+                            const currentRange = getSeatingRange(metrics.capacity);
+                            if (currentRange !== 'N/A' && currentRanges.hasOwnProperty(currentRange)) {
+                                currentRanges[currentRange]++;
+                            }
+                        }
+                    });
+                    
+                    comparisonTbody.innerHTML = '';
+                    let totalCalculated = 0;
+                    let totalCurrent = 0;
+                    
+                    rangeLabels.forEach(range => {
+                        const calculated = calculatedRanges[range] || 0;
+                        const current = currentRanges[range] || 0;
+                        const difference = calculated - current;
+                        totalCalculated += calculated;
+                        totalCurrent += current;
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><strong>${range}</strong></td>
+                            <td class="text-end">${calculated}</td>
+                            <td class="text-end">${current}</td>
+                            <td class="text-end ${difference > 0 ? 'text-danger' : (difference < 0 ? 'text-success' : '')}">
+                                ${difference > 0 ? '+' : ''}${difference}
+                            </td>
+                        `;
+                        comparisonTbody.appendChild(row);
+                    });
+                    
+                    const totalRow = document.createElement('tr');
+                    totalRow.className = 'table-secondary fw-bold';
+                    const totalDifference = totalCalculated - totalCurrent;
+                    totalRow.innerHTML = `
+                        <td><strong>Total</strong></td>
+                        <td class="text-end">${totalCalculated}</td>
+                        <td class="text-end">${totalCurrent}</td>
+                        <td class="text-end">${totalDifference > 0 ? '+' : ''}${totalDifference}</td>
+                    `;
+                    comparisonTbody.appendChild(totalRow);
                 }
                 
-                // Handle seat utilization input
+                if (document.getElementById('comparisonTableBody')) {
+                    updateComparisonTable();
+                }
+                
                 const seatUtilInput = document.querySelector('#percentrageIncrease');
-                if (seatUtilInput) {
-                    seatUtilInput.addEventListener('input', function() {
-                        const enrollmentIncrease = parseFloat(forecastInput?.value) || 0;
-                        document.querySelectorAll('.course-row').forEach(row => {
-                            updateForecastGrowth(row, enrollmentIncrease);
-                        });
+                const forecastInput = document.querySelector('#enrollmentIncrease');
+                
+                function updateAllTables() {
+                    const enrollmentIncrease = parseFloat(forecastInput?.value) || 0;
+                    document.querySelectorAll('.course-row').forEach(row => {
+                        updateForecastGrowth(row, enrollmentIncrease);
                     });
+                    updateComparisonTable();
                 }
                 
-                // Track current sort state per table
-                const sortState = new Map(); // Map<table, {columnIndex: number, direction: 'asc'|'desc'}>
+                if (forecastInput) {
+                    forecastInput.addEventListener('input', updateAllTables);
+                }
+                
+                if (seatUtilInput) {
+                    seatUtilInput.addEventListener('input', updateAllTables);
+                }
+                
+                const sortState = new Map();
 
                 function updateSortIndicator(header, direction) {
-                    // Remove all sort indicators from headers in the same table
                     const table = header.closest('table');
                     table.querySelectorAll('th[data-sort]').forEach(th => {
                         th.classList.remove('sort-asc', 'sort-desc');
                     });
 
-                    // Add indicator to current header
                     if (direction === 'asc') {
                         header.classList.add('sort-asc');
                         header.setAttribute('title', 'Click to sort descending');
@@ -427,7 +675,6 @@
                     const tbody = table.querySelector('tbody');
                     if (!tbody) return;
 
-                    // Get all rows - look for both class names used in different tables
                     const rowsArray = Array.from(tbody.querySelectorAll('tr.table-course, tr.course-row'));
                     if (rowsArray.length === 0) return;
 
@@ -449,19 +696,16 @@
                             comparison = aColText.localeCompare(bColText);
                         }
 
-                        // Reverse comparison if sorting descending
                         return direction === 'desc' ? -comparison : comparison;
                     });
 
                     rowsArray.forEach(row => tbody.appendChild(row));
                 }
 
-                // Add click event listener to the sortable table headers
                 document.querySelectorAll('th[data-sort]').forEach(header => {
                     header.style.cursor = 'pointer';
                     header.setAttribute('title', 'Click to sort');
                     
-                    // Add CSS for sort indicators
                     if (!document.querySelector('#sortStyles')) {
                         const style = document.createElement('style');
                         style.id = 'sortStyles';
@@ -482,28 +726,19 @@
                         const table = this.closest('table');
                         const columnIndex = Array.from(this.parentNode.children).indexOf(this);
                         const isNumeric = this.getAttribute('data-sort') === 'numeric';
-
-                        // Get current sort state for this table
                         const currentState = sortState.get(table);
                         let newDirection = 'asc';
 
-                        // If clicking the same column, toggle direction
                         if (currentState && currentState.columnIndex === columnIndex) {
                             newDirection = currentState.direction === 'asc' ? 'desc' : 'asc';
                         }
 
-                        // Update sort state
                         sortState.set(table, { columnIndex, direction: newDirection });
-
-                        // Perform sort
                         sortTableByColumn(table, columnIndex, isNumeric, newDirection);
-
-                        // Update visual indicator
                         updateSortIndicator(this, newDirection);
                     });
                 });
                 
-                // Sticky header implementation
                 (function() {
                     const table = document.querySelector('.sticky-header-table');
                     if (!table) return;
@@ -626,10 +861,8 @@
                         tableContainer.addEventListener('scroll', handleHorizontalScroll, { passive: true });
                     }
                     
-                    // Initial check
                     updateStickyHeader();
                     
-                    // Clean up on page unload
                     window.addEventListener('beforeunload', function() {
                         if (stickyHeader) {
                             stickyHeader.remove();
@@ -651,6 +884,4 @@
         </div>
         @endif
     </div>
-
-
 @endsection

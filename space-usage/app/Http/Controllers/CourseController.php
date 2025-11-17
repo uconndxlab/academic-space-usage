@@ -15,13 +15,16 @@ class CourseController
     public function index()
     {
         $selectedTerm = request('term');
-        $selectedDepartment = request('department', 'all');
+        $selectedDepartments = request('department', []);
+        if (!is_array($selectedDepartments)) {
+            $selectedDepartments = $selectedDepartments === 'all' || $selectedDepartments === '' ? [] : [$selectedDepartments];
+        }
         $selectedCampus = request('campus');
         $selectedFacilityType = request('sa_facility_type', 'all');
+        $seatUtilization = request('seat_utilization', 75);
     
         $terms = Term::orderBy('term_code')->get();
         
-        // Get initial filter options - filter departments by term if selected
         if ($selectedTerm) {
             $departments = Course::where('term_id', $selectedTerm)
                 ->select('subject_code')
@@ -38,9 +41,9 @@ class CourseController
                     $q->where('term_id', $selectedTerm);
                 });
             })
-            ->when($selectedDepartment && $selectedDepartment !== 'all', function ($query) use ($selectedDepartment) {
-                $query->whereHas('course', function ($q) use ($selectedDepartment) {
-                    $q->where('subject_code', $selectedDepartment);
+            ->when(!empty($selectedDepartments), function ($query) use ($selectedDepartments) {
+                $query->whereHas('course', function ($q) use ($selectedDepartments) {
+                    $q->whereIn('subject_code', $selectedDepartments);
                 });
             });
         
@@ -59,9 +62,9 @@ class CourseController
                     $q->where('term_id', $selectedTerm);
                 });
             })
-            ->when($selectedDepartment, function ($query) use ($selectedDepartment) {
-                $query->whereHas('course', function ($q) use ($selectedDepartment) {
-                    $q->where('subject_code', $selectedDepartment);
+            ->when(!empty($selectedDepartments), function ($query) use ($selectedDepartments) {
+                $query->whereHas('course', function ($q) use ($selectedDepartments) {
+                    $q->whereIn('subject_code', $selectedDepartments);
                 });
             })
             ->when($selectedCampus, function ($query) use ($selectedCampus) {
@@ -72,9 +75,9 @@ class CourseController
             ->pluck('sa_facility_type')
             ->sort();
     
-        $hasAllFilters = !empty($selectedTerm) && !empty($selectedDepartment) && !empty($selectedCampus);
+        $hasAllFilters = !empty($selectedTerm) && !empty($selectedDepartments) && !empty($selectedCampus);
     
-        $sectionsData = collect(); 
+        $sectionsData = collect();
     
         if ($hasAllFilters) {
             $sections = Section::query()->with(['course', 'room', 'room.building']);
@@ -96,42 +99,52 @@ class CourseController
                 });
             }
             
-            if ($selectedDepartment !== 'all') {
-                $sections->whereHas('course', function ($query) use ($selectedDepartment) {
-                    $query->where('subject_code', $selectedDepartment);
+            if (!empty($selectedDepartments)) {
+                $sections->whereHas('course', function ($query) use ($selectedDepartments) {
+                    $query->whereIn('subject_code', $selectedDepartments);
                 });
             }
         
-        // Return individual sections instead of grouping by course
-        $sectionsData = $sections->get()->map(function ($section) {
-            $course = $section->course;
-            $room = $section->room;
-            
-            return [
-                'section_id' => $section->id,
-                'section_number' => $section->section_number,
-                'course_id' => $course->id,
-                'subject_code' => $course->subject_code,
-                'catalog_number' => $course->catalog_number,
-                'class_descr' => $course->class_descr,
-                'duration_minutes' => $course->duration_minutes,
-                'day10_enrol' => $section->day10_enrol,
-                'total_class_days' => $section->total_class_days ?? 0,
-                'room' => $room ? [
-                    'id' => $room->id,
-                    'capacity' => $room->capacity,
-                    'room_number' => $room->room_number,
-                    'sa_facility_type' => $room->sa_facility_type,
-                    'building' => $room->building ? [
-                        'id' => $room->building->id,
-                        'building_code' => $room->building->building_code,
+            $sectionsDataRaw = $sections->get();
+        
+            // Return individual sections instead of grouping by course
+            $sectionsData = $sectionsDataRaw->map(function ($section) {
+                $course = $section->course;
+                $room = $section->room;
+                
+                return [
+                    'section_id' => $section->id,
+                    'section_number' => $section->section_number,
+                    'course_id' => $course->id,
+                    'subject_code' => $course->subject_code,
+                    'catalog_number' => $course->catalog_number,
+                    'class_descr' => $course->class_descr,
+                    'duration_minutes' => $course->duration_minutes,
+                    'day10_enrol' => $section->day10_enrol,
+                    'total_class_days' => $section->total_class_days ?? 0,
+                    'room' => $room ? [
+                        'id' => $room->id,
+                        'capacity' => $room->capacity,
+                        'room_number' => $room->room_number,
+                        'sa_facility_type' => $room->sa_facility_type,
+                        'building' => $room->building ? [
+                            'id' => $room->building->id,
+                            'building_code' => $room->building->building_code,
+                        ] : null,
                     ] : null,
-                ] : null,
-            ];
-        })->values();
+                ];
+            })->values();
         }
     
-        return view('courses.index', compact('sectionsData', 'terms', 'departments', 'campuses', 'facilityTypes'));
+        return view('courses.index', compact(
+            'sectionsData',
+            'terms',
+            'departments',
+            'campuses',
+            'facilityTypes',
+            'selectedFacilityType',
+            'seatUtilization'
+        ));
     }
 
     /**
@@ -140,7 +153,10 @@ class CourseController
     public function getFilterOptions(Request $request)
     {
         $term = $request->input('term');
-        $department = $request->input('department');
+        $departments = $request->input('department', []);
+        if (!is_array($departments)) {
+            $departments = $departments === 'all' || $departments === '' ? [] : [$departments];
+        }
         $campus = $request->input('campus');
         $facilityType = $request->input('sa_facility_type');
 
@@ -180,9 +196,9 @@ class CourseController
                     $q->where('sa_facility_type', $facilityType);
                 });
             })
-            ->when($department && $department !== 'all', function ($query) use ($department) {
-                $query->whereHas('course', function ($q) use ($department) {
-                    $q->where('subject_code', $department);
+            ->when(!empty($departments), function ($query) use ($departments) {
+                $query->whereHas('course', function ($q) use ($departments) {
+                    $q->whereIn('subject_code', $departments);
                 });
             });
 
@@ -209,9 +225,9 @@ class CourseController
                     $q->where('term_id', $term);
                 });
             })
-            ->when($department, function ($query) use ($department) {
-                $query->whereHas('course', function ($q) use ($department) {
-                    $q->where('subject_code', $department);
+            ->when(!empty($departments), function ($query) use ($departments) {
+                $query->whereHas('course', function ($q) use ($departments) {
+                    $q->whereIn('subject_code', $departments);
                 });
             })
             ->when($campus, function ($query) use ($campus) {
@@ -231,15 +247,6 @@ class CourseController
         ]);
     }
     
-
-
-
-
-
-
-
-
-
     /**
      * Show the form for creating a new resource.
      */
