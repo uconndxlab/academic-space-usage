@@ -121,7 +121,12 @@ class CourseController
                 
                 $isLab = $facilityType && stripos($facilityType, 'LAB') !== false;
                 $multiplier = $isLab ? 28 : 30;
-                $wschBenchmark = round($capacity * $multiplier, 2);
+                
+                if($selectedFacilityType === 'LAB') {
+                    $wschBenchmark = round($enrollment/0.8  * $multiplier, 2);
+                }else{
+                    $wschBenchmark = round($enrollment/0.75  * $multiplier, 2);
+                }
                 $roomsNeeded = $wschBenchmark > 0 ? round($wsch / $wschBenchmark, 2) : 0;
                 
                 $seatUtilDecimal = $seatUtilization / 100;
@@ -162,21 +167,32 @@ class CourseController
                 ];
             })->values();
             
+            // Calculate per-campus room counts by seat range. This is used for compare view whole campus buckets.
+            $perCampusRoomData = self::getPerCampusRoomData(
+                $selectedTerm,
+                $selectedDepartments,
+                $selectedCampus,
+                $selectedFacilityType
+            );
+            
             // Calculate comparison table data
             $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
-            $calculatedRanges = array_fill_keys($rangeLabels, 0);
-            $currentRanges = array_fill_keys($rangeLabels, 0);
             
+            // Sum up rooms needed by seat range (calculated count)
+            $calculatedRanges = array_fill_keys($rangeLabels, 0);
             foreach ($sectionsData as $section) {
                 $calculatedRange = $section['seatingRange'];
                 if ($calculatedRange !== 'N/A' && isset($calculatedRanges[$calculatedRange])) {
-                    $calculatedRanges[$calculatedRange]++;
+                    $calculatedRanges[$calculatedRange] += $section['roomsNeeded'] ?? 0;
                 }
-                
-                if ($section['capacity'] > 0) {
-                    $currentRange = self::getSeatingRange($section['capacity']);
-                    if ($currentRange !== 'N/A' && isset($currentRanges[$currentRange])) {
-                        $currentRanges[$currentRange]++;
+            }
+            
+            // Sum up per-campus room distribution by seat range (current count)
+            $currentRanges = array_fill_keys($rangeLabels, 0);
+            foreach ($perCampusRoomData as $campusData) {
+                foreach ($rangeLabels as $range) {
+                    if (isset($campusData['ranges'][$range])) {
+                        $currentRanges[$range] += $campusData['ranges'][$range];
                     }
                 }
             }
@@ -185,13 +201,14 @@ class CourseController
             foreach ($rangeLabels as $range) {
                 $comparisonData[] = [
                     'range' => $range,
-                    'calculated' => $calculatedRanges[$range],
+                    'calculated' => round($calculatedRanges[$range], 2),
                     'current' => $currentRanges[$range],
-                    'difference' => $calculatedRanges[$range] - $currentRanges[$range],
+                    'difference' => round($calculatedRanges[$range] - $currentRanges[$range], 2),
                 ];
             }
         } else {
             $comparisonData = [];
+            $perCampusRoomData = [];
         }
     
         return view('courses.index', compact(
@@ -202,7 +219,8 @@ class CourseController
             'facilityTypes',
             'selectedFacilityType',
             'seatUtilization',
-            'comparisonData'
+            'comparisonData',
+            'perCampusRoomData'
         ));
     }
     
@@ -223,6 +241,110 @@ class CourseController
         if ($seatingValue <= 349) return '300-349';
         if ($seatingValue <= 399) return '350-399';
         return '400+';
+    }
+    
+    /**
+     * Get per-campus room counts grouped by seat range
+     * Returns data structure: [campus_id => [campus_name => '...', ranges => [range => count]]]
+     */
+    private static function getPerCampusRoomData($selectedTerm, $selectedDepartments, $selectedCampus, $selectedFacilityType)
+    {
+        $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
+        
+        $sectionsQuery = Section::query()
+            ->select('room_id', 'campus_id')
+            ->whereNotNull('campus_id')
+            ->whereNotNull('room_id')
+            ->when($selectedTerm, function ($query) use ($selectedTerm) {
+                $query->whereHas('course', function ($q) use ($selectedTerm) {
+                    $q->where('term_id', $selectedTerm);
+                });
+            })
+            ->when($selectedCampus, function ($query) use ($selectedCampus) {
+                $query->where('campus_id', $selectedCampus);
+            })
+            ->when($selectedFacilityType, function ($query) use ($selectedFacilityType) {
+                $query->whereHas('room', function ($q) use ($selectedFacilityType) {
+                    $q->where('sa_facility_type', $selectedFacilityType);
+                });
+            });
+        
+        $roomCampusPairs = $sectionsQuery
+            ->distinct()
+            ->get()
+            ->map(function ($section) {
+                return [
+                    'room_id' => $section->room_id,
+                    'campus_id' => $section->campus_id
+                ];
+            })
+            ->unique(function ($pair) {
+                return $pair['room_id'] . '-' . $pair['campus_id'];
+            })
+            ->values();
+        
+        if ($roomCampusPairs->isEmpty()) {
+            return [];
+        }
+        
+        $roomIds = $roomCampusPairs->pluck('room_id')->unique()->toArray();
+        
+        $rooms = Room::whereIn('id', $roomIds)
+            ->when($selectedFacilityType, function ($query) use ($selectedFacilityType) {
+                $query->where('sa_facility_type', $selectedFacilityType);
+            })
+            ->get()
+            ->keyBy('id');
+        
+        $campusIds = $roomCampusPairs->pluck('campus_id')->unique()->toArray();
+        $campuses = Campus::whereIn('id', $campusIds)->get()->keyBy('id');
+        
+        $campusRooms = [];
+        
+        foreach ($roomCampusPairs as $pair) {
+            $roomId = $pair['room_id'];
+            $campusId = $pair['campus_id'];
+            
+            if (!isset($rooms[$roomId]) || !isset($campuses[$campusId])) {
+                continue;
+            }
+            
+            $room = $rooms[$roomId];
+            $roomCapacity = $room->capacity ?? 0;
+            
+            if (!isset($campusRooms[$campusId])) {
+                $campusRooms[$campusId] = [
+                    'campus_name' => $campuses[$campusId]->name,
+                    'rooms' => []
+                ];
+            }
+            
+            if ($roomCapacity > 0 && !isset($campusRooms[$campusId]['rooms'][$roomId])) {
+                $campusRooms[$campusId]['rooms'][$roomId] = $roomCapacity;
+            }
+        }
+        
+        $perCampusData = [];
+
+        //Get the count of ranges for campuses
+        foreach ($campusRooms as $campusId => $campusData) {
+            $rangeCounts = array_fill_keys($rangeLabels, 0);
+            
+            foreach ($campusData['rooms'] as $roomCapacity) {
+                $range = self::getSeatingRange($roomCapacity);
+                if ($range !== 'N/A' && isset($rangeCounts[$range])) {
+                    $rangeCounts[$range]++;
+                }
+            }
+            
+            $perCampusData[$campusId] = [
+                'campus_name' => $campusData['campus_name'],
+                'ranges' => $rangeCounts,
+                'total_rooms' => count($campusData['rooms'])
+            ];
+        }
+        
+        return $perCampusData;
     }
 
     /**

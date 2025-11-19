@@ -546,9 +546,9 @@
                         <div class="card-body">
                             <h2 class="mb-4">Seat Range Comparison</h2>
                             <p class="text-muted mb-4">
-                                This comparison shows the distribution of sections across seat ranges.
-                                <strong>Calculated Range</strong> is based on enrollment divided by seat utilization ({{ $seatUtilization ?? 75 }}%), using the "Seat @%" value shown in the table.
-                                <strong>Current Range</strong> is based on the actual room capacity.
+                                This comparison shows the rooms needed vs. available rooms across seat ranges.
+                                <strong>Calculated Count</strong> is the sum of "Rooms Needed" for all sections in each seat range, based on enrollment divided by seat utilization ({{ $seatUtilization ?? 75 }}%).
+                                <strong>Current Count</strong> is the total number of unique rooms available per campus, distributed by seat range based on room capacity.
                             </p>
 
                             <div class="table-responsive">
@@ -574,23 +574,61 @@
                                                 @endphp
                                                 <tr>
                                                     <td><strong>{{ $row['range'] }}</strong></td>
-                                                    <td class="text-end">{{ $row['calculated'] }}</td>
+                                                    <td class="text-end">{{ number_format($row['calculated'], 2) }}</td>
                                                     <td class="text-end">{{ $row['current'] }}</td>
                                                     <td class="text-end {{ $row['difference'] > 0 ? 'text-danger' : ($row['difference'] < 0 ? 'text-success' : '') }}">
-                                                        {{ $row['difference'] > 0 ? '+' : '' }}{{ $row['difference'] }}
+                                                        {{ $row['difference'] > 0 ? '+' : '' }}{{ number_format($row['difference'], 2) }}
                                                     </td>
                                                 </tr>
                                             @endforeach
                                             <tr class="table-secondary fw-bold">
                                                 <td><strong>Total</strong></td>
-                                                <td class="text-end">{{ $totalCalculated }}</td>
+                                                <td class="text-end">{{ number_format($totalCalculated, 2) }}</td>
                                                 <td class="text-end">{{ $totalCurrent }}</td>
-                                                <td class="text-end">{{ ($totalCalculated - $totalCurrent) > 0 ? '+' : '' }}{{ $totalCalculated - $totalCurrent }}</td>
+                                                <td class="text-end">{{ ($totalCalculated - $totalCurrent) > 0 ? '+' : '' }}{{ number_format($totalCalculated - $totalCurrent, 2) }}</td>
                                             </tr>
                                         @endif
                                     </tbody>
                                 </table>
                             </div>
+                            
+                            @if(!empty($perCampusRoomData))
+                            <div class="mt-5">
+                                <h3 class="mb-4">Per-Campus Room Distribution by Seat Range</h3>
+                                <p class="text-muted mb-4">
+                                    This table shows the number of unique rooms in each seat range for each campus, based on room capacity.
+                                </p>
+                                
+                                @php
+                                    $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
+                                @endphp
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover table-sm">
+                                        <thead>
+                                            <tr class="table-primary">
+                                                <th scope="col">Campus</th>
+                                                @foreach($rangeLabels as $range)
+                                                    <th scope="col" class="text-end">{{ $range }}</th>
+                                                @endforeach
+                                                <th scope="col" class="text-end fw-bold">Total Rooms</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($perCampusRoomData as $campusId => $campusData)
+                                                <tr>
+                                                    <td><strong>{{ $campusData['campus_name'] }}</strong></td>
+                                                    @foreach($rangeLabels as $range)
+                                                        <td class="text-end">{{ $campusData['ranges'][$range] ?? 0 }}</td>
+                                                    @endforeach
+                                                    <td class="text-end fw-bold">{{ $campusData['total_rooms'] }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
