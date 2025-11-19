@@ -517,18 +517,18 @@
                                                     {{ $section['subject_code'] }} {{ $section['catalog_number'] }} - {{ $section['section_number'] }}
                                                 </a>
                                             </td>
-                                            <td class="forecast-enrollment">{{ $section['enrollment'] }}</td>
+                                            <td class="forecast-enrollment">{{ \Illuminate\Support\Number::format((int)$section['enrollment']) }}</td>
                                             <td class="forecast-sections">1</td>
                                             <td class="forecast-rooms">1</td>
-                                            <td class="forecast-capacity">{{ $section['capacity'] }}</td>
-                                            <td class="forecast-contact-hours">{{ number_format($section['contactHours'], 2) }}</td>
-                                            <td class="forecast-days-per-week">{{ $section['daysPerWeek'] }}</td>
-                                            <td class="forecast-wsch">{{ $section['wsch'] }}</td>
-                                            <td class="forecast-enroll-growth">{{ $section['enrollment'] }}</td>
-                                            <td class="forecast-wsch-growth">{{ $section['wsch'] }}</td>
-                                            <td class="forecast-seating-75">{{ $section['seating75Util'] }}</td>
-                                            <td class="wsch-benchmark">{{ $section['wschBenchmark'] }}</td>
-                                            <td class="forecast-labs-needed">{{ $section['roomsNeeded'] }}</td>
+                                            <td class="forecast-capacity">{{ \Illuminate\Support\Number::format((int)$section['capacity']) }}</td>
+                                            <td class="forecast-contact-hours">{{ \Illuminate\Support\Number::format($section['contactHours'], 2) }}</td>
+                                            <td class="forecast-days-per-week">{{ \Illuminate\Support\Number::format((int)$section['daysPerWeek']) }}</td>
+                                            <td class="forecast-wsch">{{ \Illuminate\Support\Number::format((int)$section['wsch']) }}</td>
+                                            <td class="forecast-enroll-growth">{{ \Illuminate\Support\Number::format((int)$section['enrollment']) }}</td>
+                                            <td class="forecast-wsch-growth">{{ \Illuminate\Support\Number::format((int)$section['wsch']) }}</td>
+                                            <td class="forecast-seating-75">{{ \Illuminate\Support\Number::format((int)$section['seating75Util']) }}</td>
+                                            <td class="wsch-benchmark">{{ \Illuminate\Support\Number::format((int)$section['wschBenchmark']) }}</td>
+                                            <td class="forecast-labs-needed">{{ \Illuminate\Support\Number::format($section['roomsNeeded'], 2) }}</td>
                                             <td class="forecast-seating-range">{{ $section['seatingRange'] }}</td>
                                         </tr>
                                         @endforeach
@@ -545,9 +545,19 @@
                     <div class="card">
                         <div class="card-body">
                             <h2 class="mb-4">Seat Range Comparison</h2>
+                            <div class="mb-3">
+                                <label for="enrollmentIncreaseCompare" class="form-label">Enrollment Increase (%)</label>
+                                <input type="number" id="enrollmentIncreaseCompare" class="form-control" value="0" min="0"
+                                    max="100" step="1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="percentrageIncreaseCompare" class="form-label">Seat Utilization(%)</label>
+                                <input type="number" id="percentrageIncreaseCompare" class="form-control" value="{{ $seatUtilization ?? ($selectedFacilityType && stripos($selectedFacilityType, 'LAB') !== false ? 80 : 75) }}" min="0"
+                                    max="100" step="1">
+                            </div>
                             <p class="text-muted mb-4">
                                 This comparison shows the rooms needed vs. available rooms across seat ranges.
-                                <strong>Calculated Count</strong> is the sum of "Rooms Needed" for all sections in each seat range, based on enrollment divided by seat utilization ({{ $seatUtilization ?? 75 }}%).
+                                <strong>Calculated Count</strong> is the sum of "Rooms Needed" for all sections in each seat range, based on enrollment divided by seat utilization.
                                 <strong>Current Count</strong> is the total number of unique rooms available per campus, distributed by seat range based on room capacity.
                             </p>
 
@@ -564,28 +574,32 @@
                                     <tbody id="comparisonTableBody">
                                         @if(!empty($comparisonData))
                                             @php
-                                                $totalCalculated = 0;
-                                                $totalCurrent = 0;
+                                                $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
+                                                $currentRangesData = [];
+                                                if (!empty($perCampusRoomData)) {
+                                                    foreach ($perCampusRoomData as $campusData) {
+                                                        foreach ($rangeLabels as $range) {
+                                                            if (!isset($currentRangesData[$range])) {
+                                                                $currentRangesData[$range] = 0;
+                                                            }
+                                                            $currentRangesData[$range] += $campusData['ranges'][$range] ?? 0;
+                                                        }
+                                                    }
+                                                }
                                             @endphp
-                                            @foreach($comparisonData as $row)
-                                                @php
-                                                    $totalCalculated += $row['calculated'];
-                                                    $totalCurrent += $row['current'];
-                                                @endphp
-                                                <tr>
-                                                    <td><strong>{{ $row['range'] }}</strong></td>
-                                                    <td class="text-end">{{ number_format($row['calculated'], 2) }}</td>
-                                                    <td class="text-end">{{ $row['current'] }}</td>
-                                                    <td class="text-end {{ $row['difference'] > 0 ? 'text-danger' : ($row['difference'] < 0 ? 'text-success' : '') }}">
-                                                        {{ $row['difference'] > 0 ? '+' : '' }}{{ number_format($row['difference'], 2) }}
-                                                    </td>
+                                            @foreach($rangeLabels as $range)
+                                                <tr data-range="{{ $range }}">
+                                                    <td><strong>{{ $range }}</strong></td>
+                                                    <td class="text-end calculated-count">0</td>
+                                                    <td class="text-end current-count">{{ $currentRangesData[$range] ?? 0 }}</td>
+                                                    <td class="text-end difference">0</td>
                                                 </tr>
                                             @endforeach
                                             <tr class="table-secondary fw-bold">
                                                 <td><strong>Total</strong></td>
-                                                <td class="text-end">{{ number_format($totalCalculated, 2) }}</td>
-                                                <td class="text-end">{{ $totalCurrent }}</td>
-                                                <td class="text-end">{{ ($totalCalculated - $totalCurrent) > 0 ? '+' : '' }}{{ number_format($totalCalculated - $totalCurrent, 2) }}</td>
+                                                <td class="text-end total-calculated">0</td>
+                                                <td class="text-end total-current">{{ array_sum($currentRangesData) }}</td>
+                                                <td class="text-end total-difference">0</td>
                                             </tr>
                                         @endif
                                     </tbody>
@@ -661,39 +675,174 @@
                     return '400+';
                 }
                 
+                function formatNumber(value, decimals = 0) {
+                    if (value === null || value === undefined || isNaN(value)) return '0';
+                    const num = parseFloat(value);
+                    if (decimals === 0) {
+                        return Math.round(num).toLocaleString('en-US');
+                    } else {
+                        return num.toLocaleString('en-US', { 
+                            minimumFractionDigits: decimals, 
+                            maximumFractionDigits: decimals 
+                        });
+                    }
+                }
+                
+                function parseFormattedNumber(value) {
+                    if (!value) return 0;
+                    // Remove commas and parse
+                    return parseFloat(value.toString().replace(/,/g, '')) || 0;
+                }
+                
+                function getSeatUtilizationValue() {
+                    const seatUtilInput = document.querySelector('#percentrageIncrease');
+                    const seatUtilCompareInput = document.querySelector('#percentrageIncreaseCompare');
+                    const seatUtilPercent = parseFloat(seatUtilInput?.value || seatUtilCompareInput?.value) || 75;
+                    return seatUtilPercent;
+                }
+                
+                function getEnrollmentIncreaseValue() {
+                    const enrollmentInput = document.querySelector('#enrollmentIncrease');
+                    const enrollmentCompareInput = document.querySelector('#enrollmentIncreaseCompare');
+                    const enrollmentIncrease = parseFloat(enrollmentInput?.value || enrollmentCompareInput?.value) || 0;
+                    return enrollmentIncrease;
+                }
+                
                 function updateForecastGrowth(row, growthPercentage) {
                     const originalEnrollment = parseFloat(row.getAttribute('data-original-enrollment'));
                     const durationMinutes = parseFloat(row.getAttribute('data-duration-minutes'));
                     const totalClassDays = parseFloat(row.getAttribute('data-total-class-days'));
                     const facilityType = row.getAttribute('data-facility-type') || selectedFacilityType;
                     
-                    const seatUtilInput = document.querySelector('#percentrageIncrease');
-                    const seatUtilPercent = parseFloat(seatUtilInput?.value) || (isLab(facilityType) ? 80 : 75);
+                    const seatUtilPercent = getSeatUtilizationValue();
                     const seatUtilDecimal = seatUtilPercent / 100;
                     
                     const growthEnrollment = Math.round(originalEnrollment * (1 + growthPercentage / 100));
                     const contactHours = durationMinutes / 60;
-                    const wschGrowth = parseFloat((growthEnrollment * totalClassDays * contactHours).toFixed(2));
+                    const wschGrowth = growthEnrollment * totalClassDays * contactHours;
                     const seating75Util = seatUtilDecimal > 0 ? Math.round(growthEnrollment / seatUtilDecimal) : 0;
                     const multiplier = getWSCHMultiplier(facilityType);
-                    const wschBenchmark = parseFloat((seating75Util * multiplier).toFixed(2));
-                    const roomsNeeded = wschBenchmark > 0 ? (wschGrowth / wschBenchmark).toFixed(2) : 0;
+                    const wschBenchmark = seating75Util * multiplier;
+                    const roomsNeeded = wschBenchmark > 0 ? wschGrowth / wschBenchmark : 0;
                     const seatingRange = getSeatingRange(seating75Util);
                     
-                    row.querySelector('.forecast-enroll-growth').textContent = growthEnrollment;
-                    row.querySelector('.forecast-wsch-growth').textContent = Math.ceil(wschGrowth);
-                    row.querySelector('.forecast-seating-75').textContent = seating75Util;
-                    row.querySelector('.wsch-benchmark').textContent = wschBenchmark;
-                    row.querySelector('.forecast-labs-needed').textContent = roomsNeeded;
+                    row.querySelector('.forecast-enroll-growth').textContent = formatNumber(growthEnrollment);
+                    row.querySelector('.forecast-wsch-growth').textContent = formatNumber(Math.ceil(wschGrowth));
+                    row.querySelector('.forecast-seating-75').textContent = formatNumber(seating75Util);
+                    row.querySelector('.wsch-benchmark').textContent = formatNumber(Math.round(wschBenchmark));
+                    row.querySelector('.forecast-labs-needed').textContent = formatNumber(roomsNeeded, 2);
                     row.querySelector('.forecast-seating-range').textContent = seatingRange;
                 }
                 
                 function updateAllTables() {
-                    const forecastInput = document.querySelector('#enrollmentIncrease');
-                    const enrollmentIncrease = parseFloat(forecastInput?.value) || 0;
+                    const enrollmentIncrease = getEnrollmentIncreaseValue();
                     document.querySelectorAll('.course-row').forEach(row => {
                         updateForecastGrowth(row, enrollmentIncrease);
                     });
+                    updateCompareView();
+                }
+                
+                function updateCompareView() {
+                    const rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
+                    const calculatedRanges = {};
+                    rangeLabels.forEach(range => {
+                        calculatedRanges[range] = 0;
+                    });
+                    
+                    // Sum up rooms needed by seat range from table rows
+                    document.querySelectorAll('.course-row').forEach(row => {
+                        const seatingRange = row.querySelector('.forecast-seating-range')?.textContent.trim();
+                        const roomsNeeded = parseFormattedNumber(row.querySelector('.forecast-labs-needed')?.textContent.trim() || 0);
+                        
+                        if (seatingRange && seatingRange !== 'N/A' && calculatedRanges.hasOwnProperty(seatingRange)) {
+                            calculatedRanges[seatingRange] += roomsNeeded;
+                        }
+                    });
+                    
+                    // Update comparison table
+                    const comparisonBody = document.querySelector('#comparisonTableBody');
+                    if (!comparisonBody) return;
+                    
+                    let totalCalculated = 0;
+                    let totalCurrent = 0;
+                    
+                    rangeLabels.forEach(range => {
+                        const row = comparisonBody.querySelector(`tr[data-range="${range}"]`);
+                        if (!row) return;
+                        
+                        const calculated = calculatedRanges[range] || 0;
+                        const calculatedRounded = Math.ceil(calculated);
+                        const current = parseFloat(row.querySelector('.current-count')?.textContent.trim() || 0);
+                        const difference = calculatedRounded - current;
+                        
+                        totalCalculated += calculatedRounded;
+                        totalCurrent += current;
+                        
+                        row.querySelector('.calculated-count').textContent = calculatedRounded;
+                        const diffCell = row.querySelector('.difference');
+                        diffCell.textContent = (difference >= 0 ? '+' : '') + difference;
+                        // Red if existing rooms (current) < needed (calculated) - we need more rooms
+                        // Green if existing rooms (current) > needed (calculated) - we have excess
+                        if (current < calculatedRounded) {
+                            diffCell.className = 'text-end difference text-danger';
+                        } else if (current > calculatedRounded) {
+                            diffCell.className = 'text-end difference text-success';
+                        } else {
+                            diffCell.className = 'text-end difference';
+                        }
+                    });
+                    
+                    // Update totals row
+                    const totalRow = comparisonBody.querySelector('tr.table-secondary');
+                    if (totalRow) {
+                        const totalDiff = totalCalculated - totalCurrent;
+                        totalRow.querySelector('.total-calculated').textContent = totalCalculated;
+                        totalRow.querySelector('.total-difference').textContent = (totalDiff >= 0 ? '+' : '') + totalDiff;
+                        // Apply color to total difference as well
+                        const totalDiffCell = totalRow.querySelector('.total-difference');
+                        if (totalCurrent < totalCalculated) {
+                            totalDiffCell.className = 'text-end total-difference text-danger';
+                        } else if (totalCurrent > totalCalculated) {
+                            totalDiffCell.className = 'text-end total-difference text-success';
+                        } else {
+                            totalDiffCell.className = 'text-end total-difference';
+                        }
+                    }
+                }
+                
+                function syncInputs(sourceInput, targetInput) {
+                    if (sourceInput && targetInput && sourceInput.value !== targetInput.value) {
+                        targetInput.value = sourceInput.value;
+                    }
+                }
+                
+                function setupInputSync() {
+                    const enrollmentInput = document.querySelector('#enrollmentIncrease');
+                    const enrollmentCompareInput = document.querySelector('#enrollmentIncreaseCompare');
+                    const seatUtilInput = document.querySelector('#percentrageIncrease');
+                    const seatUtilCompareInput = document.querySelector('#percentrageIncreaseCompare');
+                    
+                    if (enrollmentInput && enrollmentCompareInput) {
+                        enrollmentInput.addEventListener('input', function() {
+                            syncInputs(enrollmentInput, enrollmentCompareInput);
+                            updateAllTables();
+                        });
+                        enrollmentCompareInput.addEventListener('input', function() {
+                            syncInputs(enrollmentCompareInput, enrollmentInput);
+                            updateAllTables();
+                        });
+                    }
+                    
+                    if (seatUtilInput && seatUtilCompareInput) {
+                        seatUtilInput.addEventListener('input', function() {
+                            syncInputs(seatUtilInput, seatUtilCompareInput);
+                            updateAllTables();
+                        });
+                        seatUtilCompareInput.addEventListener('input', function() {
+                            syncInputs(seatUtilCompareInput, seatUtilInput);
+                            updateAllTables();
+                        });
+                    }
                 }
                 
                 const forecastInput = document.querySelector('#enrollmentIncrease');
@@ -704,6 +853,19 @@
                 }
                 if (seatUtilInput) {
                     seatUtilInput.addEventListener('input', updateAllTables);
+                }
+                
+                setupInputSync();
+                
+                // Initialize on page load
+                updateAllTables();
+                
+                // Update compare view when the compare tab is shown
+                const compareTab = document.querySelector('#compare-tab');
+                if (compareTab) {
+                    compareTab.addEventListener('shown.bs.tab', function() {
+                        updateCompareView();
+                    });
                 }
                 
                 // Table sorting
