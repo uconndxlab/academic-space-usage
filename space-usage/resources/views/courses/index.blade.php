@@ -524,9 +524,9 @@
                                             <td class="forecast-capacity">{{ \Illuminate\Support\Number::format((int)$section['capacity']) }}</td>
                                             <td class="forecast-contact-hours">{{ \Illuminate\Support\Number::format($section['contactHours'], 2) }}</td>
                                             <td class="forecast-days-per-week">{{ \Illuminate\Support\Number::format((int)$section['daysPerWeek']) }}</td>
-                                            <td class="forecast-wsch">{{ \Illuminate\Support\Number::format($section['wsch'], 1) }}</td>
+                                            <td class="forecast-wsch">{{ \Illuminate\Support\Number::format($section['wsch']) }}</td>
                                             <td class="forecast-enroll-growth">{{ \Illuminate\Support\Number::format((int)$section['enrollment']) }}</td>
-                                            <td class="forecast-wsch-growth">{{ \Illuminate\Support\Number::format($section['wsch'], 1) }}</td>
+                                            <td class="forecast-wsch-growth">{{ \Illuminate\Support\Number::format($section['wsch']) }}</td>
                                             <td class="forecast-seating-75"></td>
                                             <td class="wsch-benchmark"></td>
                                             <td class="forecast-labs-needed"></td>
@@ -741,7 +741,7 @@
                     const seatingRange = getSeatingRange(seating75Util);
                     
                     row.querySelector('.forecast-enroll-growth').textContent = formatNumber(growthEnrollment);
-                    row.querySelector('.forecast-wsch-growth').textContent = formatNumber(wschGrowth, 1);
+                    row.querySelector('.forecast-wsch-growth').textContent = formatNumber(wschGrowth);
                     row.querySelector('.forecast-seating-75').textContent = formatNumber(seating75Util);
                     row.querySelector('.wsch-benchmark').textContent = formatNumber(wschBenchmark, 2);
                     row.querySelector('.forecast-labs-needed').textContent = formatNumber(roomsNeeded, 2);
