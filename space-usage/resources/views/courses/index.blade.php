@@ -150,11 +150,6 @@
             }
         </style>
         <script>
-            function isLab(facilityType) {
-                if (!facilityType) return false;
-                return facilityType.toUpperCase().includes('LAB');
-            }
-            
             (function() {
                 const filters = {
                     term: document.querySelector('#termFilter'),
@@ -480,6 +475,11 @@
                                 <input type="number" id="percentrageIncrease" class="form-control" value="{{ $seatUtilization ?? ($selectedFacilityType && stripos($selectedFacilityType, 'LAB') !== false ? 80 : 75) }}" min="0"
                                     max="100" step="1">
                             </div>
+                            <div class="mb-3">
+                                <label for="wschMultiplier" class="form-label"># of hours in a week</label>
+                                <input type="number" id="wschMultiplier" class="form-control" value="30" min="1"
+                                    step="0.1">
+                            </div>
 
                             @if ($sectionsData->isEmpty())
                                 <p>No courses available.</p>
@@ -511,6 +511,7 @@
                                             data-duration-minutes="{{ $section['duration_minutes'] }}"
                                             data-capacity="{{ $section['capacity'] }}"
                                             data-total-class-days="{{ $section['daysPerWeek'] }}"
+                                            data-contact-hours="{{ $section['contactHours'] }}"
                                             data-facility-type="{{ $section['facilityType'] }}">
                                             <td>
                                                 <a href="/course/{{ $section['course_id'] }}">
@@ -523,13 +524,13 @@
                                             <td class="forecast-capacity">{{ \Illuminate\Support\Number::format((int)$section['capacity']) }}</td>
                                             <td class="forecast-contact-hours">{{ \Illuminate\Support\Number::format($section['contactHours'], 2) }}</td>
                                             <td class="forecast-days-per-week">{{ \Illuminate\Support\Number::format((int)$section['daysPerWeek']) }}</td>
-                                            <td class="forecast-wsch">{{ \Illuminate\Support\Number::format((int)$section['wsch']) }}</td>
+                                            <td class="forecast-wsch">{{ \Illuminate\Support\Number::format($section['wsch'], 1) }}</td>
                                             <td class="forecast-enroll-growth">{{ \Illuminate\Support\Number::format((int)$section['enrollment']) }}</td>
-                                            <td class="forecast-wsch-growth">{{ \Illuminate\Support\Number::format((int)$section['wsch']) }}</td>
-                                            <td class="forecast-seating-75">{{ \Illuminate\Support\Number::format((int)$section['seating75Util']) }}</td>
-                                            <td class="wsch-benchmark">{{ \Illuminate\Support\Number::format((int)$section['wschBenchmark']) }}</td>
-                                            <td class="forecast-labs-needed">{{ \Illuminate\Support\Number::format($section['roomsNeeded'], 2) }}</td>
-                                            <td class="forecast-seating-range">{{ $section['seatingRange'] }}</td>
+                                            <td class="forecast-wsch-growth">{{ \Illuminate\Support\Number::format($section['wsch'], 1) }}</td>
+                                            <td class="forecast-seating-75"></td>
+                                            <td class="wsch-benchmark"></td>
+                                            <td class="forecast-labs-needed"></td>
+                                            <td class="forecast-seating-range"></td>
                                         </tr>
                                         @endforeach
                                     </tbody>
@@ -555,6 +556,11 @@
                                 <input type="number" id="percentrageIncreaseCompare" class="form-control" value="{{ $seatUtilization ?? ($selectedFacilityType && stripos($selectedFacilityType, 'LAB') !== false ? 80 : 75) }}" min="0"
                                     max="100" step="1">
                             </div>
+                            <div class="mb-3">
+                                <label for="wschMultiplierCompare" class="form-label"># of hours in a week</label>
+                                <input type="number" id="wschMultiplierCompare" class="form-control" value="30" min="1"
+                                    step="0.1">
+                            </div>
                             <p class="text-muted mb-4">
                                 This comparison shows the rooms needed vs. available rooms across seat ranges.
                                 <strong>Calculated Count</strong> is the sum of "Rooms Needed" for all sections in each seat range, based on enrollment divided by seat utilization.
@@ -572,9 +578,11 @@
                                         </tr>
                                     </thead>
                                     <tbody id="comparisonTableBody">
-                                        @if(!empty($comparisonData))
+                                        @php
+                                        $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
+                                    @endphp
+                                    @if(!empty($comparisonData))
                                             @php
-                                                $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
                                                 $currentRangesData = [];
                                                 if (!empty($perCampusRoomData)) {
                                                     foreach ($perCampusRoomData as $campusData) {
@@ -613,10 +621,6 @@
                                     This table shows the number of unique rooms in each seat range for each campus, based on room capacity.
                                 </p>
                                 
-                                @php
-                                    $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
-                                @endphp
-                                
                                 <div class="table-responsive">
                                     <table class="table table-striped table-hover table-sm">
                                         <thead>
@@ -651,13 +655,18 @@
             
             <script>
                 const selectedFacilityType = @json($selectedFacilityType);
+                const rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
                 
                 function isLab(facilityType) {
-                    return facilityType && facilityType.toUpperCase().includes('LAB');
+                    if (!facilityType) return false;
+                    return facilityType.toUpperCase().includes('LAB');
                 }
                 
                 function getWSCHMultiplier(facilityType) {
-                    return isLab(facilityType) ? 28 : 30;
+                    const wschMultiplierInput = document.querySelector('#wschMultiplier');
+                    const wschMultiplierCompareInput = document.querySelector('#wschMultiplierCompare');
+                    const multiplier = parseFloat(wschMultiplierInput?.value || wschMultiplierCompareInput?.value) || 30;
+                    return multiplier;
                 }
                 
                 function getSeatingRange(seating75Util) {
@@ -708,28 +717,33 @@
                     return enrollmentIncrease;
                 }
                 
+                function roundToHalfOrFull(value) {
+                    return Math.ceil(value * 2) / 2;
+                }
+                
                 function updateForecastGrowth(row, growthPercentage) {
                     const originalEnrollment = parseFloat(row.getAttribute('data-original-enrollment'));
-                    const durationMinutes = parseFloat(row.getAttribute('data-duration-minutes'));
                     const totalClassDays = parseFloat(row.getAttribute('data-total-class-days'));
+                    const contactHours = parseFloat(row.getAttribute('data-contact-hours')); // This is already rounded CH
                     const facilityType = row.getAttribute('data-facility-type') || selectedFacilityType;
                     
                     const seatUtilPercent = getSeatUtilizationValue();
                     const seatUtilDecimal = seatUtilPercent / 100;
                     
                     const growthEnrollment = Math.round(originalEnrollment * (1 + growthPercentage / 100));
-                    const contactHours = durationMinutes / 60;
-                    const wschGrowth = growthEnrollment * totalClassDays * contactHours;
+                    // WSCH = enrollment * rounded CH * meetings per week, rounded up to nearest half or full integer
+                    const wschGrowth = roundToHalfOrFull(growthEnrollment * contactHours * totalClassDays);
                     const seating75Util = seatUtilDecimal > 0 ? Math.round(growthEnrollment / seatUtilDecimal) : 0;
                     const multiplier = getWSCHMultiplier(facilityType);
-                    const wschBenchmark = seating75Util * multiplier;
-                    const roomsNeeded = wschBenchmark > 0 ? wschGrowth / wschBenchmark : 0;
+                    // WSCH Benchmark = (rounded CH * meetings per week) / (# of hours a week - now an input)
+                    const wschBenchmark = (contactHours * totalClassDays) / multiplier;
+                    const roomsNeeded = contactHours > 0 ? (contactHours * totalClassDays) / multiplier : 0;
                     const seatingRange = getSeatingRange(seating75Util);
                     
                     row.querySelector('.forecast-enroll-growth').textContent = formatNumber(growthEnrollment);
-                    row.querySelector('.forecast-wsch-growth').textContent = formatNumber(Math.ceil(wschGrowth));
+                    row.querySelector('.forecast-wsch-growth').textContent = formatNumber(wschGrowth, 1);
                     row.querySelector('.forecast-seating-75').textContent = formatNumber(seating75Util);
-                    row.querySelector('.wsch-benchmark').textContent = formatNumber(Math.round(wschBenchmark));
+                    row.querySelector('.wsch-benchmark').textContent = formatNumber(wschBenchmark, 2);
                     row.querySelector('.forecast-labs-needed').textContent = formatNumber(roomsNeeded, 2);
                     row.querySelector('.forecast-seating-range').textContent = seatingRange;
                 }
@@ -743,7 +757,6 @@
                 }
                 
                 function updateCompareView() {
-                    const rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
                     const calculatedRanges = {};
                     rangeLabels.forEach(range => {
                         calculatedRanges[range] = 0;
@@ -821,6 +834,8 @@
                     const enrollmentCompareInput = document.querySelector('#enrollmentIncreaseCompare');
                     const seatUtilInput = document.querySelector('#percentrageIncrease');
                     const seatUtilCompareInput = document.querySelector('#percentrageIncreaseCompare');
+                    const wschMultiplierInput = document.querySelector('#wschMultiplier');
+                    const wschMultiplierCompareInput = document.querySelector('#wschMultiplierCompare');
                     
                     if (enrollmentInput && enrollmentCompareInput) {
                         enrollmentInput.addEventListener('input', function() {
@@ -843,16 +858,31 @@
                             updateAllTables();
                         });
                     }
+                    
+                    if (wschMultiplierInput && wschMultiplierCompareInput) {
+                        wschMultiplierInput.addEventListener('input', function() {
+                            syncInputs(wschMultiplierInput, wschMultiplierCompareInput);
+                            updateAllTables();
+                        });
+                        wschMultiplierCompareInput.addEventListener('input', function() {
+                            syncInputs(wschMultiplierCompareInput, wschMultiplierInput);
+                            updateAllTables();
+                        });
+                    }
                 }
                 
                 const forecastInput = document.querySelector('#enrollmentIncrease');
                 const seatUtilInput = document.querySelector('#percentrageIncrease');
+                const wschMultiplierInput = document.querySelector('#wschMultiplier');
                 
                 if (forecastInput) {
                     forecastInput.addEventListener('input', updateAllTables);
                 }
                 if (seatUtilInput) {
                     seatUtilInput.addEventListener('input', updateAllTables);
+                }
+                if (wschMultiplierInput) {
+                    wschMultiplierInput.addEventListener('input', updateAllTables);
                 }
                 
                 setupInputSync();
