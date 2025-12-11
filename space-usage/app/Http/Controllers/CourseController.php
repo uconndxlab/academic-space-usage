@@ -22,125 +22,122 @@ class CourseController
         $selectedFacilityType = request('sa_facility_type');
         $seatUtilization = request('seat_utilization', 75);
     
-        $terms = Term::orderBy('term_code')->get();
+        $terms = Term::select('id', 'term_code', 'term_descr')->orderBy('term_code')->get();
+        
+        $departmentsQuery = Course::select('courses.subject_code')
+            ->distinct();
         
         if ($selectedTerm) {
-            $departments = Course::where('term_id', $selectedTerm)
-                ->select('subject_code')
-                ->distinct()
-                ->pluck('subject_code')
-                ->sort();
-        } else {
-            $departments = Course::select('subject_code')->distinct()->pluck('subject_code')->sort();
+            $departmentsQuery->where('courses.term_id', $selectedTerm);
         }
         
-        $campusesQuery = Section::query()
+        $departments = $departmentsQuery->pluck('subject_code')->sort();
+        
+        $campusesQuery = Section::select('sections.campus_id')
+            ->join('courses', 'sections.course_id', '=', 'courses.id')
+            ->whereNotNull('sections.campus_id')
             ->when($selectedTerm, function ($query) use ($selectedTerm) {
-                $query->whereHas('course', function ($q) use ($selectedTerm) {
-                    $q->where('term_id', $selectedTerm);
-                });
+                $query->where('courses.term_id', $selectedTerm);
             })
             ->when(!empty($selectedDepartments), function ($query) use ($selectedDepartments) {
-                $query->whereHas('course', function ($q) use ($selectedDepartments) {
-                    $q->whereIn('subject_code', $selectedDepartments);
-                });
-            });
+                $query->whereIn('courses.subject_code', $selectedDepartments);
+            })
+            ->distinct();
         
-        $availableCampusIds = $campusesQuery
-            ->whereNotNull('campus_id')
-            ->distinct()
-            ->pluck('campus_id')
-            ->filter()
-            ->unique()
-            ->values();
-        $campuses = Campus::whereIn('id', $availableCampusIds)->orderBy('name')->get();
+        $availableCampusIds = $campusesQuery->pluck('campus_id')->filter()->unique()->values();
+        $campuses = Campus::select('id', 'name')
+            ->whereIn('id', $availableCampusIds)
+            ->orderBy('name')
+            ->get();
         
-        $facilityTypesQuery = Section::query()
+        $facilityTypesQuery = Section::select('rooms.sa_facility_type')
+            ->join('courses', 'sections.course_id', '=', 'courses.id')
+            ->join('rooms', 'sections.room_id', '=', 'rooms.id')
             ->when($selectedTerm, function ($query) use ($selectedTerm) {
-                $query->whereHas('course', function ($q) use ($selectedTerm) {
-                    $q->where('term_id', $selectedTerm);
-                });
+                $query->where('courses.term_id', $selectedTerm);
             })
             ->when(!empty($selectedDepartments), function ($query) use ($selectedDepartments) {
-                $query->whereHas('course', function ($q) use ($selectedDepartments) {
-                    $q->whereIn('subject_code', $selectedDepartments);
-                });
+                $query->whereIn('courses.subject_code', $selectedDepartments);
             })
             ->when($selectedCampus, function ($query) use ($selectedCampus) {
-                $query->where('campus_id', $selectedCampus);
-            });
-        $facilityTypes = Room::whereIn('id', $facilityTypesQuery->distinct()->pluck('room_id'))
-            ->distinct()
-            ->pluck('sa_facility_type')
-            ->sort();
+                $query->where('sections.campus_id', $selectedCampus);
+            })
+            ->distinct();
+        
+        $facilityTypes = $facilityTypesQuery->pluck('sa_facility_type')->sort();
     
         $hasAllFilters = !empty($selectedTerm) && !empty($selectedDepartments) && !empty($selectedCampus) && !empty($selectedFacilityType);
     
         $sectionsData = collect();
     
         if ($hasAllFilters) {
-            $sections = Section::query()->with(['course', 'room', 'room.building']);
-        
-            if ($selectedTerm) {
-                $sections->whereHas('course', function ($query) use ($selectedTerm) {
-                    $query->where('term_id', $selectedTerm);
-                });
-            }
-        
-            $campus = Campus::find($selectedCampus);
-            if ($campus) {
-                $sections->where('campus_id', $campus->id);
-            }
-        
-            if ($selectedFacilityType) {
-                $sections->whereHas('room', function ($query) use ($selectedFacilityType) {
-                    $query->where('sa_facility_type', $selectedFacilityType);
-                });
-            }
+            $sections = Section::select([
+                'sections.id',
+                'sections.section_number',
+                'sections.course_id',
+                'sections.total_class_days',
+                'sections.day10_enrol',
+                'sections.room_id',
+                'courses.subject_code',
+                'courses.catalog_number',
+                'courses.class_descr',
+                'courses.duration_minutes',
+                'rooms.capacity',
+                'rooms.room_number',
+                'rooms.sa_facility_type',
+                'rooms.building_id',
+                'buildings.id as building_table_id',
+                'buildings.building_code'
+            ])
+            ->join('courses', 'sections.course_id', '=', 'courses.id')
+            ->leftJoin('rooms', 'sections.room_id', '=', 'rooms.id')
+            ->leftJoin('buildings', 'rooms.building_id', '=', 'buildings.id')
+            ->where('courses.term_id', $selectedTerm)
+            ->where('sections.campus_id', $selectedCampus)
+            ->whereIn('courses.subject_code', $selectedDepartments);
             
-            if (!empty($selectedDepartments)) {
-                $sections->whereHas('course', function ($query) use ($selectedDepartments) {
-                    $query->whereIn('subject_code', $selectedDepartments);
-                });
+            if ($selectedFacilityType) {
+                $sections->where('rooms.sa_facility_type', $selectedFacilityType);
             }
         
             $sectionsDataRaw = $sections->get();
         
-            // Return individual sections with raw data for frontend calculations
             $sectionsData = $sectionsDataRaw->map(function ($section) use ($selectedFacilityType) {
-                $course = $section->course;
-                $room = $section->room;
-                
                 // Calculate rounded contact hours (rounded up to nearest half hour)
-                $contactHours = $course->duration_minutes / 60;
+                $contactHours = ($section->duration_minutes ?? 0) / 60;
                 $contactHours = (int) ceil($contactHours * 2) / 2;
 
-                // Calcluate the WSCH for the section
-                $wsch = $contactHours * $section->total_class_days * $section->day10_enrol;
+                // Calculate the WSCH for the section
+                $totalClassDays = $section->total_class_days ?? 0;
+                $enrollment = $section->day10_enrol ?? 0;
+                $wsch = $contactHours * $totalClassDays * $enrollment;
+                
+                $capacity = $section->capacity ?? 0;
+                $facilityType = $section->sa_facility_type ?? $selectedFacilityType;
                 
                 return [
                     'section_id' => $section->id,
                     'section_number' => $section->section_number,
-                    'course_id' => $course->id,
-                    'subject_code' => $course->subject_code,
-                    'catalog_number' => $course->catalog_number,
-                    'class_descr' => $course->class_descr,
-                    'duration_minutes' => $course->duration_minutes,
+                    'course_id' => $section->course_id,
+                    'subject_code' => $section->subject_code,
+                    'catalog_number' => $section->catalog_number,
+                    'class_descr' => $section->class_descr,
+                    'duration_minutes' => $section->duration_minutes,
                     'contactHours' => $contactHours,
-                    'total_class_days' => $section->total_class_days ?? 0,
-                    'daysPerWeek' => $section->total_class_days ?? 0,
-                    'enrollment' => $section->day10_enrol ?? 0,
-                    'capacity' => $room ? ($room->capacity ?? 0) : 0,
-                    'facilityType' => $room ? $room->sa_facility_type : $selectedFacilityType,
+                    'total_class_days' => $totalClassDays,
+                    'daysPerWeek' => $totalClassDays,
+                    'enrollment' => $enrollment,
+                    'capacity' => $capacity,
+                    'facilityType' => $facilityType,
                     'wsch' => $wsch,
-                    'room' => $room ? [
-                        'id' => $room->id,
-                        'capacity' => $room->capacity,
-                        'room_number' => $room->room_number,
-                        'sa_facility_type' => $room->sa_facility_type,
-                        'building' => $room->building ? [
-                            'id' => $room->building->id,
-                            'building_code' => $room->building->building_code,
+                    'room' => $section->room_id ? [
+                        'id' => $section->room_id,
+                        'capacity' => $capacity,
+                        'room_number' => $section->room_number,
+                        'sa_facility_type' => $facilityType,
+                        'building' => $section->building_id ? [
+                            'id' => $section->building_table_id ?? $section->building_id,
+                            'building_code' => $section->building_code,
                         ] : null,
                     ] : null,
                 ];
@@ -154,7 +151,7 @@ class CourseController
                 $selectedFacilityType
             );
             
-            // Calculate comparison table data - current ranges only (calculated ranges moved to frontend)
+            // Calculate comparison table data - current ranges only 
             $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
             
             // Sum up per-campus room distribution by seat range (current count)
@@ -219,52 +216,51 @@ class CourseController
     {
         $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
         
-        $sections = Section::query()
-            ->with(['room', 'campus'])
-            ->whereNotNull('campus_id')
-            ->whereNotNull('room_id')
+        $uniqueRooms = Section::select([
+                'sections.campus_id',
+                'campuses.name as campus_name',
+                'rooms.capacity'
+            ])
+            ->join('courses', 'sections.course_id', '=', 'courses.id')
+            ->join('rooms', 'sections.room_id', '=', 'rooms.id')
+            ->join('campuses', 'sections.campus_id', '=', 'campuses.id')
+            ->whereNotNull('sections.campus_id')
+            ->whereNotNull('sections.room_id')
+            ->where('rooms.capacity', '>', 0)
             ->when($selectedTerm, function ($query) use ($selectedTerm) {
-                $query->whereHas('course', function ($q) use ($selectedTerm) {
-                    $q->where('term_id', $selectedTerm);
-                });
+                $query->where('courses.term_id', $selectedTerm);
+            })
+            ->when(!empty($selectedDepartments), function ($query) use ($selectedDepartments) {
+                $query->whereIn('courses.subject_code', $selectedDepartments);
             })
             ->when($selectedCampus, function ($query) use ($selectedCampus) {
-                $query->where('campus_id', $selectedCampus);
+                $query->where('sections.campus_id', $selectedCampus);
             })
             ->when($selectedFacilityType, function ($query) use ($selectedFacilityType) {
-                $query->whereHas('room', function ($q) use ($selectedFacilityType) {
-                    $q->where('sa_facility_type', $selectedFacilityType);
-                });
+                $query->where('rooms.sa_facility_type', $selectedFacilityType);
             })
+            ->groupBy('sections.room_id', 'sections.campus_id', 'campuses.name', 'rooms.capacity')
             ->get();
         
-        // Get unique room-campus pairs with their capacities
-        $uniqueRooms = $sections
-            ->filter(function ($section) {
-                return $section->room && $section->campus && ($section->room->capacity ?? 0) > 0;
-            })
-            ->unique(function ($section) {
-                return $section->room_id . '-' . $section->campus_id;
-            })
-            ->groupBy('campus_id');
-        
+        // Group by campus and calculate range counts
         $perCampusData = [];
+        $groupedByCampus = $uniqueRooms->groupBy('campus_id');
         
-        foreach ($uniqueRooms as $campusId => $campusSections) {
-            $campus = $campusSections->first()->campus;
+        foreach ($groupedByCampus as $campusId => $rooms) {
+            $campus = $rooms->first();
             $rangeCounts = array_fill_keys($rangeLabels, 0);
             
-            foreach ($campusSections as $section) {
-                $range = self::getSeatingRange($section->room->capacity ?? 0);
+            foreach ($rooms as $room) {
+                $range = self::getSeatingRange($room->capacity ?? 0);
                 if ($range !== 'N/A' && isset($rangeCounts[$range])) {
                     $rangeCounts[$range]++;
                 }
             }
             
             $perCampusData[$campusId] = [
-                'campus_name' => $campus->name,
+                'campus_name' => $campus->campus_name,
                 'ranges' => $rangeCounts,
-                'total_rooms' => $campusSections->count()
+                'total_rooms' => $rooms->count()
             ];
         }
         
@@ -285,55 +281,42 @@ class CourseController
         $facilityType = $request->input('sa_facility_type');
 
         // Get available departments (filter by term, campus and/or facility type if selected)
-        $departmentsQuery = Section::query()
-            ->with('course')
+        $departmentsQuery = Section::select('courses.subject_code')
+            ->join('courses', 'sections.course_id', '=', 'courses.id')
+            ->when($facilityType, function ($query) use ($facilityType) {
+                $query->join('rooms', 'sections.room_id', '=', 'rooms.id')
+                      ->where('rooms.sa_facility_type', $facilityType);
+            })
             ->when($term, function ($query) use ($term) {
-                $query->whereHas('course', function ($q) use ($term) {
-                    $q->where('term_id', $term);
-                });
+                $query->where('courses.term_id', $term);
             })
             ->when($campus, function ($query) use ($campus) {
-                $query->where('campus_id', $campus);
+                $query->where('sections.campus_id', $campus);
             })
-            ->when($facilityType, function ($query) use ($facilityType) {
-                $query->whereHas('room', function ($q) use ($facilityType) {
-                    $q->where('sa_facility_type', $facilityType);
-                });
-            });
+            ->distinct();
 
-        $availableDepartments = Course::whereIn('id', $departmentsQuery->distinct()->pluck('course_id'))
-            ->distinct()
-            ->pluck('subject_code')
-            ->sort()
-            ->values();
+        $availableDepartments = $departmentsQuery->pluck('subject_code')->sort()->values();
 
         // Get available campuses (filter by term, department and/or facility type if selected)
-        $campusesQuery = Section::query()
-            ->whereHas('room')
+        $campusesQuery = Section::select('sections.campus_id')
+            ->join('courses', 'sections.course_id', '=', 'courses.id')
+            ->join('rooms', 'sections.room_id', '=', 'rooms.id')
+            ->whereNotNull('sections.campus_id')
             ->when($term, function ($query) use ($term) {
-                $query->whereHas('course', function ($q) use ($term) {
-                    $q->where('term_id', $term);
-                });
+                $query->where('courses.term_id', $term);
             })
             ->when($facilityType, function ($query) use ($facilityType) {
-                $query->whereHas('room', function ($q) use ($facilityType) {
-                    $q->where('sa_facility_type', $facilityType);
-                });
+                $query->where('rooms.sa_facility_type', $facilityType);
             })
             ->when(!empty($departments), function ($query) use ($departments) {
-                $query->whereHas('course', function ($q) use ($departments) {
-                    $q->whereIn('subject_code', $departments);
-                });
-            });
+                $query->whereIn('courses.subject_code', $departments);
+            })
+            ->distinct();
 
-        $availableCampusIds = $campusesQuery
-            ->distinct()
-            ->pluck('campus_id')
-            ->filter()
-            ->unique()
-            ->values();
+        $availableCampusIds = $campusesQuery->pluck('campus_id')->filter()->unique()->values();
 
-        $availableCampuses = Campus::whereIn('id', $availableCampusIds)
+        $availableCampuses = Campus::select('id', 'name')
+            ->whereIn('id', $availableCampusIds)
             ->orderBy('name')
             ->get()
             ->map(function ($campus) {
@@ -342,27 +325,21 @@ class CourseController
             ->values();
 
         // Get available facility types (filter by term, department and/or campus if selected)
-        $facilityTypesQuery = Section::query()
-            ->with('room')
+        $facilityTypesQuery = Section::select('rooms.sa_facility_type')
+            ->join('courses', 'sections.course_id', '=', 'courses.id')
+            ->join('rooms', 'sections.room_id', '=', 'rooms.id')
             ->when($term, function ($query) use ($term) {
-                $query->whereHas('course', function ($q) use ($term) {
-                    $q->where('term_id', $term);
-                });
+                $query->where('courses.term_id', $term);
             })
             ->when(!empty($departments), function ($query) use ($departments) {
-                $query->whereHas('course', function ($q) use ($departments) {
-                    $q->whereIn('subject_code', $departments);
-                });
+                $query->whereIn('courses.subject_code', $departments);
             })
             ->when($campus, function ($query) use ($campus) {
-                $query->where('campus_id', $campus);
-            });
+                $query->where('sections.campus_id', $campus);
+            })
+            ->distinct();
 
-        $availableFacilityTypes = Room::whereIn('id', $facilityTypesQuery->distinct()->pluck('room_id'))
-            ->distinct()
-            ->pluck('sa_facility_type')
-            ->sort()
-            ->values();
+        $availableFacilityTypes = $facilityTypesQuery->pluck('sa_facility_type')->sort()->values();
 
         return response()->json([
             'departments' => $availableDepartments,
