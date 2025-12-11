@@ -786,7 +786,7 @@
                         const calculated = calculatedRanges[range] || 0;
                         const calculatedRounded = Math.ceil(calculated);
                         const current = parseFloat(row.querySelector('.current-count')?.textContent.trim() || 0);
-                        const difference = calculatedRounded - current;
+                        const difference = current - calculatedRounded;
                         
                         totalCalculated += calculatedRounded;
                         totalCurrent += current;
@@ -794,8 +794,8 @@
                         row.querySelector('.calculated-count').textContent = calculatedRounded;
                         const diffCell = row.querySelector('.difference');
                         diffCell.textContent = (difference >= 0 ? '+' : '') + difference;
-                        // Red if existing rooms (current) < needed (calculated) - we need more rooms
-                        // Green if existing rooms (current) > needed (calculated) - we have excess
+                        // Red if existing rooms (current) < needed (calculated) - we need more rooms (negative difference)
+                        // Green if existing rooms (current) > needed (calculated) - we have excess (positive difference)
                         if (current < calculatedRounded) {
                             diffCell.className = 'text-end difference text-danger';
                         } else if (current > calculatedRounded) {
@@ -808,7 +808,7 @@
                     // Update totals row
                     const totalRow = comparisonBody.querySelector('tr.table-secondary');
                     if (totalRow) {
-                        const totalDiff = totalCalculated - totalCurrent;
+                        const totalDiff = totalCurrent - totalCalculated;
                         totalRow.querySelector('.total-calculated').textContent = totalCalculated;
                         totalRow.querySelector('.total-difference').textContent = (totalDiff >= 0 ? '+' : '') + totalDiff;
                         // Apply color to total difference as well
