@@ -53,7 +53,7 @@
                 
                 <td>
                     @if(Auth::user()->id !== $user->id)
-                    <form method="POST" action="{{ route('admin.removeUser', $user->id) }}" class="me-3 mb-0">
+                    <form method="POST" action="{{ route('admin.removeUser', $user->id) }}" class="me-3 mb-0" onsubmit="return confirm('You are about to remove this users acces from the site. They will no longer be able to access it in any form. Are you sure you would like to do this?');">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-danger btn-sm">Remove</button>
