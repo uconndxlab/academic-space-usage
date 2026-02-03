@@ -23,9 +23,9 @@ class NewDataStructure extends Seeder
     public function run()
     {
         // Read the CSV file
-        $file = fopen(database_path('new_data.csv'), 'r');
+        $file = fopen(database_path('2-2-2026-data.csv'), 'r');
         if (!$file) {
-            throw new \Exception('Could not open new_data.csv file');
+            throw new \Exception('Could not open 2-2-2026-data.csv file');
         }
 
         $headers = fgetcsv($file);
@@ -40,6 +40,7 @@ class NewDataStructure extends Seeder
         $skippedRoomCapacity = 0;
         $skippedNoRoom = 0;
         $skippedMissingFields = 0;
+        $skippedInstructionMode = 0;
 
         echo "Starting to read CSV file...\n";
         echo "Headers found: " . count($headers) . " columns\n";
@@ -64,12 +65,12 @@ class NewDataStructure extends Seeder
             $acadYear = trim($data['Acad_Year'] ?? '');
             if (empty($acadYear) || (int)$acadYear < 2023) {
                 $skippedYear++;
-                if ($rowCount <= 10) {
-                    echo "Row {$rowCount}: Skipped - Acad_Year: '{$acadYear}' (< 2023)\n";
-                }
                 continue;
             }
-
+            if( !in_array($data['Instruction_Mode'], ['Hybrid/Blended', 'In Person', 'Service Learning', 'In-Person Remote', 'Hybrid/Blended Reduced', 'Split In Person']) ) {
+                $skippedInstructionMode++;
+                continue;
+            }
             // Get room information
             $roomCapacity = trim($data['Room_Capacity'] ?? '');
             $buildingCode = trim($data['Building_Code'] ?? '');
@@ -263,6 +264,7 @@ class NewDataStructure extends Seeder
         echo "Skipped - No room capacity: {$skippedRoomCapacity}\n";
         echo "Skipped - No building/room: {$skippedNoRoom}\n";
         echo "Skipped - Missing required fields: {$skippedMissingFields}\n";
+        echo "Skipped - Instruction Mode: {$skippedInstructionMode}\n";
     }
 
     /**
