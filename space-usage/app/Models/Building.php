@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class Building extends Model
 {
     use HasFactory;
-    protected $fillable = ['building_code', 'description'];
+    protected $fillable = ['building_code', 'description', 'type'];
 
     public function rooms()
     {

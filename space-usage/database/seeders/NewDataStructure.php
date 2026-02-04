@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use App\Models\Term;
 use App\Models\Building;
 use App\Models\Room;
@@ -41,6 +42,16 @@ class NewDataStructure extends Seeder
         $skippedNoRoom = 0;
         $skippedMissingFields = 0;
         $skippedInstructionMode = 0;
+        $skippedClassDays = 0;
+
+        $termCache = [];
+        $buildingCache = [];
+        $roomCache = [];
+        $courseCache = [];
+        $campusCache = [];
+        $sectionBatch = [];
+        $batchSize = 500;
+        $now = null;
 
         echo "Starting to read CSV file...\n";
         echo "Headers found: " . count($headers) . " columns\n";
@@ -67,10 +78,40 @@ class NewDataStructure extends Seeder
                 $skippedYear++;
                 continue;
             }
-            if( !in_array($data['Instruction_Mode'], ['Hybrid/Blended', 'In Person', 'Service Learning', 'In-Person Remote', 'Hybrid/Blended Reduced', 'Split In Person']) ) {
+            $instructionMode = trim($data['Instruction_Mode'] ?? '');
+            if (!in_array($instructionMode, ['Hybrid/Blended', 'In Person', 'Service Learning', 'In-Person Remote', 'Hybrid/Blended Reduced', 'Split In Person'])) {
                 $skippedInstructionMode++;
                 continue;
             }
+
+            // Parse Class_Days early so we only add rooms for rows that have at least one meeting day
+            // Format [YNYNYNN] = Sun-Sat (7 days). Y = class that day, N = no class
+            $classDays = trim($data['Class_Days'] ?? '');
+            if (strtoupper($classDays) === 'NNNNNNN') {
+                $skippedClassDays++;
+                continue;
+            }
+
+            $sunday = false;
+            $monday = false;
+            $tuesday = false;
+            $wednesday = false;
+            $thursday = false;
+            $friday = false;
+            $saturday = false;
+            $totalClassDays = 0;
+            if (strlen($classDays) >= 7) {
+                $sunday = strtoupper($classDays[0]) === 'Y';
+                $monday = strtoupper($classDays[1]) === 'Y';
+                $tuesday = strtoupper($classDays[2]) === 'Y';
+                $wednesday = strtoupper($classDays[3]) === 'Y';
+                $thursday = strtoupper($classDays[4]) === 'Y';
+                $friday = strtoupper($classDays[5]) === 'Y';
+                $saturday = strtoupper($classDays[6]) === 'Y';
+                $totalClassDays = ($sunday ? 1 : 0) + ($monday ? 1 : 0) + ($tuesday ? 1 : 0)
+                    + ($wednesday ? 1 : 0) + ($thursday ? 1 : 0) + ($friday ? 1 : 0) + ($saturday ? 1 : 0);
+            }
+
             // Get room information
             $roomCapacity = trim($data['Room_Capacity'] ?? '');
             $buildingCode = trim($data['Building_Code'] ?? '');
@@ -106,119 +147,104 @@ class NewDataStructure extends Seeder
                 }
                 continue;
             }
-            
             if ($processedCount == 0) {
                 echo "Row {$rowCount}: Processing - Acad_Year: {$acadYear}, Subject: {$subjectCode}, Catalog: {$catalogNumber}, Building: {$buildingCode}, Room: {$room}\n";
             }
 
             try {
-                // Handle Term
-                $term = Term::firstOrCreate(
-                    ['term_code' => $termCode],
-                    ['term_descr' => trim($data['Term'] ?? 'Unknown')]
-                );
-
-                // Map Room_Type_Code to facility type
                 $roomTypeCode = trim($data['Room_Type_Code'] ?? '');
                 $facilityType = $this->mapRoomTypeToFacilityType($roomTypeCode);
 
-                // Handle Building
-                $building = Building::firstOrCreate(
-                    ['building_code' => $buildingCode],
-                    [
-                        'description' => $buildingCode,
-                        'type' => $facilityType,
-                    ]
-                );
+                // Term (cached)
+                if (!isset($termCache[$termCode])) {
+                    $termCache[$termCode] = Term::firstOrCreate(
+                        ['term_code' => $termCode],
+                        ['term_descr' => trim($data['Term'] ?? 'Unknown')]
+                    )->id;
+                }
+                $termId = $termCache[$termCode];
 
-                // Handle Room
-                $roomModel = Room::firstOrCreate(
-                    ['building_id' => $building->id, 'room_number' => $room],
-                    [
-                        'capacity' => (int)$roomCapacity,
-                        'room_description' => $room,
-                        'sa_facility_type' => $facilityType,
-                    ]
-                );
+                // Building (cached)
+                if (!isset($buildingCache[$buildingCode])) {
+                    $buildingCache[$buildingCode] = Building::firstOrCreate(
+                        ['building_code' => $buildingCode],
+                        ['description' => $buildingCode, 'type' => $facilityType]
+                    );
+                }
+                $building = $buildingCache[$buildingCode];
 
-                // Handle duration conversion
-                $durationMinutes = 0;
+                // Room (cached by building_id + room_number)
+                $roomKey = $building->id . '|' . $room;
+                if (!isset($roomCache[$roomKey])) {
+                    $roomCache[$roomKey] = Room::firstOrCreate(
+                        ['building_id' => $building->id, 'room_number' => $room],
+                        [
+                            'capacity' => (int)$roomCapacity,
+                            'room_description' => $room,
+                            'sa_facility_type' => $facilityType,
+                        ]
+                    )->id;
+                }
+                $roomId = $roomCache[$roomKey];
+
+                // Duration
                 $classDurationWeekly = trim($data['Class_Duration'] ?? '');
-                
+                $durationMinutes = 0;
                 if (!empty($classDurationWeekly)) {
-                    // Check if duration is already in minutes (numeric) or in H:MM format
                     if (strpos($classDurationWeekly, ':') !== false) {
-                        // Format is H:MM, convert to minutes
                         $parts = explode(':', $classDurationWeekly);
                         $durationMinutes = (int)$parts[0] * 60 + (int)($parts[1] ?? 0);
                     } else {
-                        // Assume it's already in minutes
                         $durationMinutes = (int)$classDurationWeekly;
                     }
                 }
 
-                // Get class description
                 $classDescr = trim($data['Short_Class_Description'] ?? '');
-                if (empty($classDescr)) {
+                if ($classDescr === '') {
                     $classDescr = trim($data['Course_Description'] ?? '');
                 }
 
-                // Handle Course
-                $course = Course::firstOrCreate(
-                    [
-                        'subject_code' => $subjectCode,
-                        'catalog_number' => $catalogNumber,
-                        'term_id' => $term->id,
-                    ],
-                    [
-                        'class_descr' => $classDescr,
-                        'wsch_max' => 'wsch_max',
-                        'term_id' => $term->id,
-                        'class_duration_weekly' => $classDurationWeekly ?: null,
-                        'duration_minutes' => $durationMinutes,
-                        'division' => trim($data['Class_Academic_Career'] ?? ''),
-                    ]
-                );
+                // Course (cached)
+                $courseKey = $subjectCode . '|' . $catalogNumber . '|' . $termId;
+                if (!isset($courseCache[$courseKey])) {
+                    $courseCache[$courseKey] = Course::firstOrCreate(
+                        ['subject_code' => $subjectCode, 'catalog_number' => $catalogNumber, 'term_id' => $termId],
+                        [
+                            'class_descr' => $classDescr,
+                            'wsch_max' => 'wsch_max',
+                            'term_id' => $termId,
+                            'class_duration_weekly' => $classDurationWeekly ?: null,
+                            'duration_minutes' => $durationMinutes,
+                            'division' => trim($data['Class_Academic_Career'] ?? ''),
+                        ]
+                    )->id;
+                }
+                $courseId = $courseCache[$courseKey];
 
-                // No department enrollment columns in new format, set to empty array
-                $enrollments_by_dept = [];
-
-                // Parse Class_Days format [YNYNYNN] where positions are Sun-Sat (7 days)
-                // Y = class on that day, N = no class
-                // Position 0: Sunday, 1: Monday, 2: Tuesday, 3: Wednesday, 4: Thursday, 5: Friday, 6: Saturday
-                $classDays = trim($data['Class_Days'] ?? '');
-                $sunday = false;
-                $monday = false;
-                $tuesday = false;
-                $wednesday = false;
-                $thursday = false;
-                $friday = false;
-                $saturday = false;
-                $totalClassDays = 0;
-
-                if (strlen($classDays) >= 7) {
-                    $sunday = strtoupper($classDays[0]) === 'Y';
-                    $monday = strtoupper($classDays[1]) === 'Y';
-                    $tuesday = strtoupper($classDays[2]) === 'Y';
-                    $wednesday = strtoupper($classDays[3]) === 'Y';
-                    $thursday = strtoupper($classDays[4]) === 'Y';
-                    $friday = strtoupper($classDays[5]) === 'Y';
-                    $saturday = strtoupper($classDays[6]) === 'Y';
-                    
-                    $totalClassDays = ($sunday ? 1 : 0) + ($monday ? 1 : 0) + ($tuesday ? 1 : 0) + 
-                                     ($wednesday ? 1 : 0) + ($thursday ? 1 : 0) + ($friday ? 1 : 0) + 
-                                     ($saturday ? 1 : 0);
+                // Campus (cached) for section
+                $campusName = trim($data['Class_Campus'] ?? '');
+                $campusId = null;
+                if ($campusName !== '') {
+                    if (!isset($campusCache[$campusName])) {
+                        $campusCache[$campusName] = Campus::firstOrCreate(['name' => $campusName])->id;
+                    }
+                    $campusId = $campusCache[$campusName];
                 }
 
-                // Handle Section
-                $section = Section::create([
+                $startTime = trim($data['Class_Start_Time'] ?? '') ?: '00:00:00';
+                $endTime = trim($data['Class_End_Time'] ?? '') ?: '00:00:00';
+
+                if ($now === null) {
+                    $now = now();
+                }
+                $sectionBatch[] = [
                     'section_number' => trim($data['Class_Section'] ?? ''),
-                    'course_id' => $course->id,
+                    'course_id' => $courseId,
                     'enrol_cap' => (int)($data['Enrollment_Cap'] ?? 0),
                     'day10_enrol' => (int)($data['Day10_Enroll'] ?? 0),
                     'component_code' => trim($data['Class_Component_Code'] ?? ''),
-                    'start_time' => trim($data['Class_Start_Time'] ?? ''),
-                    'end_time' => trim($data['Class_End_Time'] ?? ''),
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
                     'days' => $classDays,
                     'sunday' => $sunday,
                     'monday' => $monday,
@@ -228,34 +254,32 @@ class NewDataStructure extends Seeder
                     'friday' => $friday,
                     'saturday' => $saturday,
                     'total_class_days' => $totalClassDays,
-                    'room_id' => $roomModel->id,
-                    'enrollments_by_dept' => json_encode($enrollments_by_dept),
-                ]);
+                    'room_id' => $roomId,
+                    'campus_id' => $campusId,
+                    'enrollments_by_dept' => '[]',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
 
-                // Handle Campus
-                $campusName = trim($data['Class_Campus'] ?? '');
-                if (!empty($campusName)) {
-                    $campus = Campus::firstOrCreate(
-                        ['name' => $campusName]
-                    );
-
-                    $section->campus()->associate($campus);
-                    $section->save();
-                }
-
-                $processedCount++;
-                
-                if ($processedCount % 100 == 0) {
-                    echo "Processed {$processedCount} rows...\n";
+                if (count($sectionBatch) >= $batchSize) {
+                    DB::table('sections')->insert($sectionBatch);
+                    $processedCount += count($sectionBatch);
+                    $sectionBatch = [];
+                    if ($processedCount % 1000 === 0) {
+                        echo "Processed {$processedCount} rows...\n";
+                    }
                 }
             } catch (\Exception $e) {
-                // Log error but continue processing
                 echo "Error processing row {$rowCount}: " . $e->getMessage() . "\n";
                 echo "Subject: {$subjectCode}, Catalog: {$catalogNumber}, Term: {$termCode}\n";
                 continue;
             }
         }
 
+        if (!empty($sectionBatch)) {
+            DB::table('sections')->insert($sectionBatch);
+            $processedCount += count($sectionBatch);
+        }
         fclose($file);
         echo "\n=== Summary ===\n";
         echo "Total rows read: {$rowCount}\n";
@@ -265,6 +289,7 @@ class NewDataStructure extends Seeder
         echo "Skipped - No building/room: {$skippedNoRoom}\n";
         echo "Skipped - Missing required fields: {$skippedMissingFields}\n";
         echo "Skipped - Instruction Mode: {$skippedInstructionMode}\n";
+        echo "Skipped - No class days (NNNNNNN or none): {$skippedClassDays}\n";
     }
 
     /**

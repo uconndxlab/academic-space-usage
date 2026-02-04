@@ -14,8 +14,8 @@
 
     <div class="container">
         <h1 class="mb-4">Course List</h1>
-
-        <div class="mb-4">
+        <a href="{{ route('courses.byDayUsage') }}" class="btn btn-primary">View by Day Usage</a>
+        <div class="mb-4 py-2">
             <form method="GET" action="{{ route('courses.index') }}" id="filterForm">
                 <div class="row">
                     <div class="col-md-6 mb-3">
