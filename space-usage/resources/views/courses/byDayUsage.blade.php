@@ -111,8 +111,8 @@
                         <input type="number" id="enrollmentIncrease" class="form-control" value="0" min="0" max="100" step="1">
                     </div>
                     <div class="mb-3">
-                        <label for="percentrageIncrease" class="form-label">Seat Utilization (%)</label>
-                        <input type="number" id="percentrageIncrease" class="form-control" value="{{ $seatUtilization ?? ($selectedFacilityType && stripos($selectedFacilityType, 'LAB') !== false ? 80 : 75) }}" min="0" max="100" step="1">
+                        <label for="percentageIncrease" class="form-label">Seat Utilization (%)</label>
+                        <input type="number" id="percentageIncrease" class="form-control" value="{{ $seatUtilization ?? ($selectedFacilityType && stripos($selectedFacilityType, 'LAB') !== false ? 80 : 75) }}" min="0" max="100" step="1">
                     </div>
                     <div class="mb-3">
                         <label for="blockPerDay" class="form-label"># of blocks per day</label>
@@ -447,9 +447,8 @@ document.getElementById('filterForm').addEventListener('submit', function(e) {
         const originalEnrollment = parseFloat(row.getAttribute('data-original-enrollment'));
         const totalClassDays = parseFloat(row.getAttribute('data-total-class-days'));
         const durationMinutes = parseFloat(row.getAttribute('data-duration-minutes')) || 0;
-        const contactHours = durationMinutes / 60;
         const facilityType = row.getAttribute('data-facility-type') || selectedFacilityType;
-        const seatUtilPercent = parseFloat(document.querySelector('#percentrageIncrease')?.value || 75) || 75;
+        const seatUtilPercent = parseFloat(document.querySelector('#percentageIncrease')?.value || 75) || 75;
         const seatUtilDecimal = seatUtilPercent / 100;
         const growthEnrollment = Math.round(originalEnrollment * (1 + growthPercentage / 100));
         const seating75Util = seatUtilDecimal > 0 ? Math.round(growthEnrollment / seatUtilDecimal) : 0;
@@ -472,7 +471,7 @@ document.getElementById('filterForm').addEventListener('submit', function(e) {
     }
 
     document.querySelector('#enrollmentIncrease')?.addEventListener('input', updateAllTables);
-    document.querySelector('#percentrageIncrease')?.addEventListener('input', updateAllTables);
+    document.querySelector('#percentageIncrease')?.addEventListener('input', updateAllTables);
     document.querySelector('#blockPerDay')?.addEventListener('input', updateAllTables);
     updateAllTables();
 
