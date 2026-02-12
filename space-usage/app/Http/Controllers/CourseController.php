@@ -506,33 +506,72 @@ class CourseController
      */
     public function show(Request $request, $id)
     {
-        $course = Course::find($id);
-        $selectedCampus = $request->input('campus_id', 1); // Default campus ID to 1 if not provided
-        $selectedCampus = Campus::find($selectedCampus);
-        $facilityType = $request->input('sa_facility_type', "LAB");
-        $facilityTypes = Room::select('sa_facility_type')->distinct()->pluck('sa_facility_type')->sort();
-
-    
-        // Filter sections based on campus and facility type
+        $course = Course::with('term')->find($id);
+        
+        $campuses = Campus::whereHas('sections', function ($query) use ($course) {
+            $query->where('course_id', $course->id);
+        })->orderBy('name')->get();
+        
+        $campusId = $request->input('campus');
+        $selectedCampus = null;
+        if ($campusId && $campusId !== '') {
+            $selectedCampus = Campus::find($campusId);
+        }
+        
+        // Get facility types
+        $facilityTypesQuery = Section::select('rooms.sa_facility_type')
+            ->join('rooms', 'sections.room_id', '=', 'rooms.id')
+            ->where('sections.course_id', $course->id)
+            ->whereNotNull('rooms.sa_facility_type')
+            ->when($selectedCampus, function ($query) use ($selectedCampus) {
+                $query->where('sections.campus_id', $selectedCampus->id);
+            })
+            ->distinct();
+        
+        $facilityTypes = $facilityTypesQuery->pluck('sa_facility_type')->sort();
+        
+        // Get facility type
+        $facilityType = $request->input('sa_facility_type');
+        
+        // Get day type
+        $dayType = $request->input('day_type', 'all');
+        if (!in_array($dayType, ['mwf', 'tuth', 'all'], true)) {
+            $dayType = 'all';
+        }
+        
+        // Filter sections based on campus and facility type, eager load room relationship
         $sections = $course->sections()
+            ->with('room')
             ->when($selectedCampus, function ($query) use ($selectedCampus) {
                 $query->where('campus_id', $selectedCampus->id);
             })
-            ->when($facilityType, function ($query) use ($facilityType) {
+            ->when($facilityType && $facilityType !== '', function ($query) use ($facilityType) {
                 $query->whereHas('room', function ($q) use ($facilityType) {
                     $q->where('sa_facility_type', $facilityType);
                 });
             })
+            ->when($dayType === 'mwf', function ($query) {
+                $query->where(function ($q) {
+                    $q->where('monday', true)
+                      ->orWhere('wednesday', true)
+                      ->orWhere('friday', true);
+                });
+            })
+            ->when($dayType === 'tuth', function ($query) {
+                $query->where(function ($q) {
+                    $q->where('tuesday', true)
+                      ->orWhere('thursday', true);
+                });
+            })
             ->get();
-    
+        
         $course->sections = $sections;
     
         $currentEnrollment = $sections->sum('day10_enrol');
         $componentCodes = $sections->pluck('component_code')->unique();
-        $campuses = Campus::orderBy('name')->get();
         $selectedFacilityType = $facilityType;
     
-        return view('courses.show', compact('course', 'currentEnrollment', 'componentCodes', 'campuses', 'selectedCampus', 'selectedFacilityType', 'facilityTypes'));
+        return view('courses.show', compact('course', 'currentEnrollment', 'componentCodes', 'campuses', 'selectedCampus', 'selectedFacilityType', 'facilityTypes', 'dayType'));
     }
     
 

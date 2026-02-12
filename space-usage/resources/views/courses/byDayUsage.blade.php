@@ -140,13 +140,26 @@
                                 </thead>
                                 <tbody id="coursesTableBody">
                                     @foreach($sectionsData as $section)
+                                    @php
+                                        $queryParams = [];
+                                        if (request('campus')) {
+                                            $queryParams['campus'] = request('campus');
+                                        }
+                                        if (request('sa_facility_type')) {
+                                            $queryParams['sa_facility_type'] = request('sa_facility_type');
+                                        }
+                                        if (request('day_type')) {
+                                            $queryParams['day_type'] = request('day_type');
+                                        }
+                                        $queryString = !empty($queryParams) ? '?' . http_build_query($queryParams) : '';
+                                    @endphp
                                     <tr class="course-row"
                                         data-original-enrollment="{{ $section['enrollment'] }}"
                                         data-duration-minutes="{{ $section['duration_minutes'] }}"
                                         data-capacity="{{ $section['capacity'] }}"
                                         data-total-class-days="{{ $section['daysPerWeek'] }}"
                                         data-facility-type="{{ $section['facilityType'] }}">
-                                        <td><a href="{{ url('/course/' . $section['course_id']) }}">{{ $section['subject_code'] }} {{ $section['catalog_number'] }} - {{ $section['section_number'] }}</a></td>
+                                        <td><a href="{{ route('courses.show', ['id' => $section['course_id']]) }}{{ $queryString }}">{{ $section['subject_code'] }} {{ $section['catalog_number'] }} - {{ $section['section_number'] }}</a></td>
                                         <td class="forecast-enrollment">{{ \Illuminate\Support\Number::format((int)$section['enrollment']) }}</td>
                                         <td class="forecast-capacity">{{ \Illuminate\Support\Number::format((int)$section['capacity']) }}</td>
                                         <td class="forecast-duration">{{ $section['duration_minutes'] }}</td>

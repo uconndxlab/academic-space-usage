@@ -514,7 +514,20 @@
                                             data-contact-hours="{{ $section['contactHours'] }}"
                                             data-facility-type="{{ $section['facilityType'] }}">
                                             <td>
-                                                <a href="/course/{{ $section['course_id'] }}">
+                                                @php
+                                                    $queryParams = [];
+                                                    if (request('campus')) {
+                                                        $queryParams['campus'] = request('campus');
+                                                    }
+                                                    if (request('sa_facility_type')) {
+                                                        $queryParams['sa_facility_type'] = request('sa_facility_type');
+                                                    }
+                                                    if (request('day_type')) {
+                                                        $queryParams['day_type'] = request('day_type');
+                                                    }
+                                                    $queryString = !empty($queryParams) ? '?' . http_build_query($queryParams) : '';
+                                                @endphp
+                                                <a href="{{ route('courses.show', ['id' => $section['course_id']]) }}{{ $queryString }}">
                                                     {{ $section['subject_code'] }} {{ $section['catalog_number'] }} - {{ $section['section_number'] }}
                                                 </a>
                                             </td>
