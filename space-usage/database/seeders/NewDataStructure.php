@@ -15,7 +15,7 @@ use App\Models\Campus;
 /**
  * New CSV format columns:
  * CTERM_TERM_CD, Term, Acad_Year, Class_Subject_Code, Class_Catalog_NBR, Class_Section,
- * Class_Component_Code, Day10_Enroll, Enrollment_Cap, Building_Code, Room, Room_Type_Code,
+ * Class_Component_Code, Day10_Enroll, Enrollment_Cap, building_code, Room, Room_Type_Code,
  * Room_Capacity, Class_Days, Class_Duration, Class_Start_Time, Class_End_Time, Class_Campus,
  * Short_Class_Description, Course_Description, Class_Academic_Career, etc.
  */
@@ -34,6 +34,9 @@ class NewDataStructure extends Seeder
             fclose($file);
             throw new \Exception('Could not read CSV headers');
         }
+
+        // Normalize headers to lowercase for consistent access
+        $headers = array_map('strtolower', $headers);
 
         $rowCount = 0;
         $processedCount = 0;
@@ -73,12 +76,12 @@ class NewDataStructure extends Seeder
             }
 
             // Skip data older than 2023
-            $acadYear = trim($data['Acad_Year'] ?? '');
+            $acadYear = trim($data['acad_year'] ?? '');
             if (empty($acadYear) || (int)$acadYear < 2023) {
                 $skippedYear++;
                 continue;
             }
-            $instructionMode = trim($data['Instruction_Mode'] ?? '');
+            $instructionMode = trim($data['instruction_mode'] ?? '');
             if (!in_array($instructionMode, ['Hybrid/Blended', 'In Person', 'Service Learning', 'In-Person Remote', 'Hybrid/Blended Reduced', 'Split In Person'])) {
                 $skippedInstructionMode++;
                 continue;
@@ -86,7 +89,7 @@ class NewDataStructure extends Seeder
 
             // Parse Class_Days early so we only add rooms for rows that have at least one meeting day
             // Format [YNYNYNN] = Sun-Sat (7 days). Y = class that day, N = no class
-            $classDays = trim($data['Class_Days'] ?? '');
+            $classDays = trim($data['class_days'] ?? '');
             if (strtoupper($classDays) === 'NNNNNNN') {
                 $skippedClassDays++;
                 continue;
@@ -113,9 +116,9 @@ class NewDataStructure extends Seeder
             }
 
             // Get room information
-            $roomCapacity = trim($data['Room_Capacity'] ?? '');
-            $buildingCode = trim($data['Building_Code'] ?? '');
-            $room = trim($data['Room'] ?? '');
+            $roomCapacity = trim($data['room_capacity'] ?? '');
+            $buildingCode = (string)trim($data['building_code'] ?? '');
+            $room = trim($data['room'] ?? '');
 
             // Skip if room capacity is 0, null, or empty (need at least some room info)
             if (empty($roomCapacity) || (int)$roomCapacity == 0) {
@@ -136,9 +139,9 @@ class NewDataStructure extends Seeder
             }
 
             // Skip if required course fields are missing
-            $subjectCode = trim($data['Class_Subject_Code'] ?? '');
-            $catalogNumber = trim($data['Class_Catalog_NBR'] ?? '');
-            $termCode = trim($data['CTERM_TERM_CD'] ?? '');
+            $subjectCode = trim($data['class_subject_code'] ?? '');
+            $catalogNumber = trim($data['class_catalog_nbr'] ?? '');
+            $termCode = trim($data['cterm_term_cd'] ?? '');
             
             if (empty($subjectCode) || empty($catalogNumber) || empty($termCode)) {
                 $skippedMissingFields++;
@@ -152,14 +155,17 @@ class NewDataStructure extends Seeder
             }
 
             try {
-                $roomTypeCode = trim($data['Room_Type_Code'] ?? '');
-                $facilityType = $this->mapRoomTypeToFacilityType($roomTypeCode);
+                $componentCode = trim($data['class_component_code'] ?? '');
+                $roomTypeCode = trim($data['room_type_code'] ?? '');
+                $facilityType = ($componentCode === 'LAB')
+                    ? 'LAB'
+                    : $this->mapRoomTypeToFacilityType($roomTypeCode);
 
                 // Term (cached)
                 if (!isset($termCache[$termCode])) {
                     $termCache[$termCode] = Term::firstOrCreate(
                         ['term_code' => $termCode],
-                        ['term_descr' => trim($data['Term'] ?? 'Unknown')]
+                        ['term_descr' => trim($data['term'] ?? 'Unknown')]
                     )->id;
                 }
                 $termId = $termCache[$termCode];
@@ -188,7 +194,7 @@ class NewDataStructure extends Seeder
                 $roomId = $roomCache[$roomKey];
 
                 // Duration
-                $classDurationWeekly = trim($data['Class_Duration'] ?? '');
+                $classDurationWeekly = trim($data['class_duration'] ?? '');
                 $durationMinutes = 0;
                 if (!empty($classDurationWeekly)) {
                     if (strpos($classDurationWeekly, ':') !== false) {
@@ -199,9 +205,9 @@ class NewDataStructure extends Seeder
                     }
                 }
 
-                $classDescr = trim($data['Short_Class_Description'] ?? '');
+                $classDescr = trim($data['short_class_description'] ?? '');
                 if ($classDescr === '') {
-                    $classDescr = trim($data['Course_Description'] ?? '');
+                    $classDescr = trim($data['course_description'] ?? '');
                 }
 
                 // Course (cached)
@@ -215,14 +221,14 @@ class NewDataStructure extends Seeder
                             'term_id' => $termId,
                             'class_duration_weekly' => $classDurationWeekly ?: null,
                             'duration_minutes' => $durationMinutes,
-                            'division' => trim($data['Class_Academic_Career'] ?? ''),
+                            'division' => trim($data['class_academic_career'] ?? ''),
                         ]
                     )->id;
                 }
                 $courseId = $courseCache[$courseKey];
 
                 // Campus (cached) for section
-                $campusName = trim($data['Class_Campus'] ?? '');
+                $campusName = trim($data['class_campus'] ?? '');
                 $campusId = null;
                 if ($campusName !== '') {
                     if (!isset($campusCache[$campusName])) {
@@ -231,18 +237,18 @@ class NewDataStructure extends Seeder
                     $campusId = $campusCache[$campusName];
                 }
 
-                $startTime = trim($data['Class_Start_Time'] ?? '') ?: '00:00:00';
-                $endTime = trim($data['Class_End_Time'] ?? '') ?: '00:00:00';
+                $startTime = trim($data['class_start_time'] ?? '') ?: '00:00:00';
+                $endTime = trim($data['class_end_time'] ?? '') ?: '00:00:00';
 
                 if ($now === null) {
                     $now = now();
                 }
                 $sectionBatch[] = [
-                    'section_number' => trim($data['Class_Section'] ?? ''),
+                    'section_number' => trim($data['class_section'] ?? ''),
                     'course_id' => $courseId,
-                    'enrol_cap' => (int)($data['Enrollment_Cap'] ?? 0),
-                    'day10_enrol' => (int)($data['Day10_Enroll'] ?? 0),
-                    'component_code' => trim($data['Class_Component_Code'] ?? ''),
+                    'enrol_cap' => (int)($data['enrollment_cap'] ?? 0),
+                    'day10_enrol' => (int)($data['day10_enroll'] ?? 0),
+                    'component_code' => trim($data['class_component_code'] ?? ''),
                     'start_time' => $startTime,
                     'end_time' => $endTime,
                     'days' => $classDays,

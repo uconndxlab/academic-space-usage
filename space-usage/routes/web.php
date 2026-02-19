@@ -23,6 +23,7 @@ Route::middleware('cas.auth')->group(function () {
     Route::get('/buildings/{id}', [BuildingController::class, 'show'])->name('buildings.show');
 
     Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+    Route::get('/courses/labs', [CourseController::class, 'labs'])->name('courses.labs');
     Route::get('/courses/filter-options', [CourseController::class, 'getFilterOptions'])->name('courses.filterOptions');
     Route::get('courses/by-day-usage', [CourseController::class, 'byDayUsage'])->name('courses.byDayUsage');
     // Show the course details

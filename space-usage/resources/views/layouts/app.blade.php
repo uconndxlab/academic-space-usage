@@ -121,6 +121,9 @@ body {
                         <a class="nav-link" href="{{ route('courses.index') }}">Courses</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{{ route('courses.labs') }}">Labs</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{{ route('terms.index') }}">Terms</a>
                     </li>
                     @if (Auth::user()->isAdmin)
