@@ -359,7 +359,7 @@ class CourseController
         $sectionsDataMWF = collect();
         $sectionsDataTuTh = collect();
         $dayType = request('day_type', 'mwf');
-        if (!in_array($dayType, ['mwf', 'tuth'], true)) {
+        if (!in_array($dayType, ['mwf', 'tuth', 'compare'], true)) {
             $dayType = 'mwf';
         }
 

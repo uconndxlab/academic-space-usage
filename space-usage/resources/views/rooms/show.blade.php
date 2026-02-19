@@ -53,7 +53,7 @@
                     <th>Section</th>
                     <th>Component Code</th>
                     <th>Enrollment</th>
-                    <th>Max Enrollment</th>
+                    <th>Room Capacity</th>
                     <th>% Full</th>
                 </tr>
             </thead>
