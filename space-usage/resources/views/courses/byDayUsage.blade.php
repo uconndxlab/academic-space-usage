@@ -108,7 +108,7 @@
             @if($dayType === 'mwf')
             <div class="card">
                 <div class="card-body">
-                    <div class="row mb-3">
+                    <div class="row mb-3 align-items-end">
                         <div class="col-md-4">
                             <label for="enrollmentIncrease" class="form-label">Enrollment Increase (%)</label>
                             <input type="number" id="enrollmentIncrease" class="form-control" value="0" min="0" max="100" step="1">
@@ -120,6 +120,9 @@
                         <div class="col-md-4">
                             <label for="blockPerDay" class="form-label"># of blocks per day (MWF)</label>
                             <input type="number" id="blockPerDay" class="form-control" value="9" min="1" step="0.1">
+                        </div>
+                        <div class="col-md-12 mt-2">
+                            <button type="button" class="btn btn-primary" id="applyVariablesMWF">Apply</button>
                         </div>
                     </div>
                     @if ($sectionsDataMWF->isEmpty())
@@ -176,7 +179,7 @@
             @if($dayType === 'tuth')
             <div class="card">
                 <div class="card-body">
-                    <div class="row mb-3">
+                    <div class="row mb-3 align-items-end">
                         <div class="col-md-4">
                             <label for="enrollmentIncrease" class="form-label">Enrollment Increase (%)</label>
                             <input type="number" id="enrollmentIncrease" class="form-control" value="0" min="0" max="100" step="1">
@@ -188,6 +191,9 @@
                         <div class="col-md-4">
                             <label for="blockPerDay" class="form-label"># of blocks per day (TuTh)</label>
                             <input type="number" id="blockPerDay" class="form-control" value="6" min="1" step="0.1">
+                        </div>
+                        <div class="col-md-12 mt-2">
+                            <button type="button" class="btn btn-primary" id="applyVariablesTuTh">Apply</button>
                         </div>
                     </div>
                     @if ($sectionsDataTuTh->isEmpty())
@@ -247,7 +253,7 @@
                     <p class="text-muted mb-4">
                         <strong>Calculated Count</strong> is the sum of "Rooms Needed" for all sections in each seat range. <strong>Current Count</strong> is the number of unique rooms per campus in that seat range.
                     </p>
-                    <div class="row mb-4">
+                    <div class="row mb-4 align-items-end">
                         <div class="col-md-3">
                             <label for="compareEnrollmentIncrease" class="form-label">Enrollment Increase (%)</label>
                             <input type="number" id="compareEnrollmentIncrease" class="form-control" value="0" min="0" max="100" step="1">
@@ -263,6 +269,9 @@
                         <div class="col-md-3">
                             <label for="compareBlockPerDayTuTh" class="form-label"># of blocks per day (TuTh)</label>
                             <input type="number" id="compareBlockPerDayTuTh" class="form-control" value="6" min="1" step="0.1">
+                        </div>
+                        <div class="col-md-12 mt-2">
+                            <button type="button" class="btn btn-primary" id="applyCompareVariables">Apply</button>
                         </div>
                     </div>
 
@@ -554,9 +563,8 @@ document.getElementById('filterForm').addEventListener('submit', function(e) {
         document.querySelectorAll('.course-row').forEach(row => updateForecastGrowth(row, enrollmentIncrease));
     }
 
-    document.querySelector('#enrollmentIncrease')?.addEventListener('input', updateAllTables);
-    document.querySelector('#percentageIncrease')?.addEventListener('input', updateAllTables);
-    document.querySelector('#blockPerDay')?.addEventListener('input', updateAllTables);
+    document.querySelector('#applyVariablesMWF')?.addEventListener('click', updateAllTables);
+    document.querySelector('#applyVariablesTuTh')?.addEventListener('click', updateAllTables);
     updateAllTables();
 
     const sortState = new Map();
@@ -690,10 +698,7 @@ document.getElementById('filterForm').addEventListener('submit', function(e) {
         fillComparisonTable('comparisonTableBodyCombined', combinedCalculated);
     }
 
-    document.getElementById('compareEnrollmentIncrease')?.addEventListener('input', updateCompareAll);
-    document.getElementById('comparePercentageIncrease')?.addEventListener('input', updateCompareAll);
-    document.getElementById('compareBlockPerDayMWF')?.addEventListener('input', updateCompareAll);
-    document.getElementById('compareBlockPerDayTuTh')?.addEventListener('input', updateCompareAll);
+    document.getElementById('applyCompareVariables')?.addEventListener('click', updateCompareAll);
     updateCompareAll();
 })();
 </script>

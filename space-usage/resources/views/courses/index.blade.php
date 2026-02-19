@@ -439,6 +439,9 @@
                                 <input type="number" id="wschMultiplier" class="form-control" value="30" min="1"
                                     step="0.1">
                             </div>
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-primary" id="applyVariablesTable">Apply</button>
+                            </div>
 
                             @if ($sectionsData->isEmpty())
                                 <p>No courses available.</p>
@@ -528,6 +531,9 @@
                                 <label for="wschMultiplierCompare" class="form-label"># of hours in a week</label>
                                 <input type="number" id="wschMultiplierCompare" class="form-control" value="30" min="1"
                                     step="0.1">
+                            </div>
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-primary" id="applyVariablesCompare">Apply</button>
                             </div>
                             <p class="text-muted mb-4">
                                 This comparison shows the rooms needed vs. available rooms across seat ranges.
@@ -790,63 +796,23 @@
                     }
                 }
                 
-                function setupInputSync() {
+                function syncCompareToTable() {
                     const enrollmentInput = document.querySelector('#enrollmentIncrease');
                     const enrollmentCompareInput = document.querySelector('#enrollmentIncreaseCompare');
                     const seatUtilInput = document.querySelector('#percentrageIncrease');
                     const seatUtilCompareInput = document.querySelector('#percentrageIncreaseCompare');
                     const wschMultiplierInput = document.querySelector('#wschMultiplier');
                     const wschMultiplierCompareInput = document.querySelector('#wschMultiplierCompare');
-                    
-                    if (enrollmentInput && enrollmentCompareInput) {
-                        enrollmentInput.addEventListener('input', function() {
-                            syncInputs(enrollmentInput, enrollmentCompareInput);
-                            updateAllTables();
-                        });
-                        enrollmentCompareInput.addEventListener('input', function() {
-                            syncInputs(enrollmentCompareInput, enrollmentInput);
-                            updateAllTables();
-                        });
-                    }
-                    
-                    if (seatUtilInput && seatUtilCompareInput) {
-                        seatUtilInput.addEventListener('input', function() {
-                            syncInputs(seatUtilInput, seatUtilCompareInput);
-                            updateAllTables();
-                        });
-                        seatUtilCompareInput.addEventListener('input', function() {
-                            syncInputs(seatUtilCompareInput, seatUtilInput);
-                            updateAllTables();
-                        });
-                    }
-                    
-                    if (wschMultiplierInput && wschMultiplierCompareInput) {
-                        wschMultiplierInput.addEventListener('input', function() {
-                            syncInputs(wschMultiplierInput, wschMultiplierCompareInput);
-                            updateAllTables();
-                        });
-                        wschMultiplierCompareInput.addEventListener('input', function() {
-                            syncInputs(wschMultiplierCompareInput, wschMultiplierInput);
-                            updateAllTables();
-                        });
-                    }
+                    if (enrollmentCompareInput && enrollmentInput) enrollmentInput.value = enrollmentCompareInput.value;
+                    if (seatUtilCompareInput && seatUtilInput) seatUtilInput.value = seatUtilCompareInput.value;
+                    if (wschMultiplierCompareInput && wschMultiplierInput) wschMultiplierInput.value = wschMultiplierCompareInput.value;
                 }
                 
-                const forecastInput = document.querySelector('#enrollmentIncrease');
-                const seatUtilInput = document.querySelector('#percentrageIncrease');
-                const wschMultiplierInput = document.querySelector('#wschMultiplier');
-                
-                if (forecastInput) {
-                    forecastInput.addEventListener('input', updateAllTables);
-                }
-                if (seatUtilInput) {
-                    seatUtilInput.addEventListener('input', updateAllTables);
-                }
-                if (wschMultiplierInput) {
-                    wschMultiplierInput.addEventListener('input', updateAllTables);
-                }
-                
-                setupInputSync();
+                document.querySelector('#applyVariablesTable')?.addEventListener('click', updateAllTables);
+                document.querySelector('#applyVariablesCompare')?.addEventListener('click', function() {
+                    syncCompareToTable();
+                    updateAllTables();
+                });
                 
                 // Initialize on page load
                 updateAllTables();

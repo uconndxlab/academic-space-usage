@@ -435,6 +435,9 @@
                                 <input type="number" id="hoursInput" class="form-control" value="28" min="0.1"
                                     step="0.1">
                             </div>
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-primary" id="applyVariablesTable">Apply</button>
+                            </div>
 
                             @if ($sectionsData->isEmpty())
                                 <p>No labs available.</p>
@@ -511,6 +514,9 @@
                                 <label for="hoursInputCompare" class="form-label">Hours</label>
                                 <input type="number" id="hoursInputCompare" class="form-control" value="28" min="0.1"
                                     step="0.1">
+                            </div>
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-primary" id="applyVariablesCompare">Apply</button>
                             </div>
                             <p class="text-muted mb-4">
                                 <strong>Calculated Count</strong> is the sum of "Rooms Needed" per seat range (Enrollment × Duration ÷ (Seat Util × Capacity × Hours)). <strong>Current Count</strong> is the number of unique rooms per campus by seat range.
@@ -751,46 +757,20 @@
                     }
                 }
                 
-                function setupInputSync() {
+                function syncCompareToTable() {
                     const seatUtilInput = document.querySelector('#percentrageIncrease');
                     const seatUtilCompareInput = document.querySelector('#percentrageIncreaseCompare');
                     const hoursInput = document.querySelector('#hoursInput');
                     const hoursCompareInput = document.querySelector('#hoursInputCompare');
-                    
-                    if (seatUtilInput && seatUtilCompareInput) {
-                        seatUtilInput.addEventListener('input', function() {
-                            syncInputs(seatUtilInput, seatUtilCompareInput);
-                            updateAllTables();
-                        });
-                        seatUtilCompareInput.addEventListener('input', function() {
-                            syncInputs(seatUtilCompareInput, seatUtilInput);
-                            updateAllTables();
-                        });
-                    }
-                    
-                    if (hoursInput && hoursCompareInput) {
-                        hoursInput.addEventListener('input', function() {
-                            syncInputs(hoursInput, hoursCompareInput);
-                            updateAllTables();
-                        });
-                        hoursCompareInput.addEventListener('input', function() {
-                            syncInputs(hoursCompareInput, hoursInput);
-                            updateAllTables();
-                        });
-                    }
+                    if (seatUtilCompareInput && seatUtilInput) seatUtilInput.value = seatUtilCompareInput.value;
+                    if (hoursCompareInput && hoursInput) hoursInput.value = hoursCompareInput.value;
                 }
                 
-                const seatUtilInput = document.querySelector('#percentrageIncrease');
-                const hoursInput = document.querySelector('#hoursInput');
-                
-                if (seatUtilInput) {
-                    seatUtilInput.addEventListener('input', updateAllTables);
-                }
-                if (hoursInput) {
-                    hoursInput.addEventListener('input', updateAllTables);
-                }
-                
-                setupInputSync();
+                document.querySelector('#applyVariablesTable')?.addEventListener('click', updateAllTables);
+                document.querySelector('#applyVariablesCompare')?.addEventListener('click', function() {
+                    syncCompareToTable();
+                    updateAllTables();
+                });
                 
                 // Initialize on page load
                 updateAllTables();
