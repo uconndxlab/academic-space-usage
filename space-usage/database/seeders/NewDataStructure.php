@@ -370,6 +370,7 @@ class NewDataStructure extends Seeder
             'ARTG' => 'Special',
             'AUD' => 'Classroom',
             'CLIN' => 'LAB',
+            'LSA' => 'Classroom',
             'CMLB' => 'LAB',
             'CMPL' => 'LAB',
             'CONF' => 'Classroom',
