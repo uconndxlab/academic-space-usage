@@ -21,8 +21,12 @@ use App\Models\Campus;
  */
 class NewDataStructure extends Seeder
 {
+    private array $buildingCodeMapping = [];
+
     public function run()
     {
+        $this->buildingCodeMapping = $this->loadBuildingCodeMapping();
+
         // Read the CSV file
         $file = fopen(database_path('2-2-2026-data.csv'), 'r');
         if (!$file) {
@@ -58,6 +62,7 @@ class NewDataStructure extends Seeder
 
         echo "Starting to read CSV file...\n";
         echo "Headers found: " . count($headers) . " columns\n";
+        echo "Building code mapping entries: " . count($this->buildingCodeMapping) . "\n";
 
         // Map CSV headers to the corresponding model attributes
         while ($row = fgetcsv($file)) {
@@ -170,11 +175,18 @@ class NewDataStructure extends Seeder
                 }
                 $termId = $termCache[$termCode];
 
-                // Building (cached)
+                // Building (cached) – map raw code to shorthand and short name via bulding_code_mapping.csv
+                $mapped = $this->buildingCodeMapping[trim($buildingCode)] ?? null;
+                $canonicalCode = $mapped ? $mapped['code'] : $buildingCode;
+                $shortName = $mapped ? $mapped['name'] : $buildingCode;
                 if (!isset($buildingCache[$buildingCode])) {
                     $buildingCache[$buildingCode] = Building::firstOrCreate(
-                        ['building_code' => $buildingCode],
-                        ['description' => $buildingCode, 'type' => $facilityType]
+                        ['building_code' => $canonicalCode],
+                        [
+                            'short_building_name' => $shortName,
+                            'description' => $shortName,
+                            'type' => $facilityType,
+                        ]
                     );
                 }
                 $building = $buildingCache[$buildingCode];
@@ -296,6 +308,56 @@ class NewDataStructure extends Seeder
         echo "Skipped - Missing required fields: {$skippedMissingFields}\n";
         echo "Skipped - Instruction Mode: {$skippedInstructionMode}\n";
         echo "Skipped - No class days (NNNNNNN or none): {$skippedClassDays}\n";
+    }
+
+    /**
+     * Load building code mapping from bulding_code_mapping.csv.
+     * Keys: Building_number and Building_Code (so source data can use either).
+     * Values: ['code' => Building_Code, 'name' => Short_building_name].
+     */
+    private function loadBuildingCodeMapping(): array
+    {
+        $path = database_path('bulding_code_mapping.csv');
+        if (!is_readable($path)) {
+            return [];
+        }
+        $map = [];
+        $fh = fopen($path, 'r');
+        if (!$fh) {
+            return [];
+        }
+        $headers = fgetcsv($fh);
+        if (!$headers) {
+            fclose($fh);
+            return [];
+        }
+        $headers = array_map('trim', $headers);
+        $idxManual = array_search('Manual_Intervention', $headers);
+        $idxBldgNum = array_search('Building_number', $headers);
+        $idxCode = array_search('Building_Code', $headers);
+        $idxShort = array_search('Short_building_name', $headers);
+        if ($idxBldgNum === false || $idxCode === false || $idxShort === false) {
+            fclose($fh);
+            return [];
+        }
+        while ($row = fgetcsv($fh)) {
+            if (count($row) <= max($idxBldgNum, $idxCode, $idxShort)) {
+                continue;
+            }
+            $bldgNum = trim($row[$idxBldgNum] ?? '');
+            $code = trim($row[$idxCode] ?? '');
+            $shortName = trim($row[$idxShort] ?? '');
+            if ($code === '') {
+                continue;
+            }
+            $entry = ['code' => $code, 'name' => $shortName];
+            if ($bldgNum !== '') {
+                $map[$bldgNum] = $entry;
+            }
+            $map[$code] = $entry;
+        }
+        fclose($fh);
+        return $map;
     }
 
     /**

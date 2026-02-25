@@ -32,7 +32,7 @@ class Over190Seeder extends Seeder
 
             // Handle Building
             $building = Building::firstOrCreate(
-                ['building_code' => $data['building_code']],
+                ['building_code' => (string)trim($data['building_code'] ?? '')],
                 ['description' => $data['Bldg_Description']]
             );
 
