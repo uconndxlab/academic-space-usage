@@ -13,6 +13,8 @@ class SpaceDataSeeder extends Seeder
 {
     private const ALLOWED_FICM = ['110', '210', '350', '680'];
 
+    private const SEED_ANYWAY_BLDG = ['0245', '0295', '0331A', '0419', '0428', '0505', '1103'];
+
     public function run(): void
     {
         $buildingCodeMapping = $this->loadBuildingCodeMapping();
@@ -64,13 +66,14 @@ class SpaceDataSeeder extends Seeder
 
             $ficmRaw = trim((string) ($row[$ficmIdx] ?? ''));
             $ficm = $ficmRaw !== '' ? (string) (int) $ficmRaw : '';
-            if (!in_array($ficm, self::ALLOWED_FICM, true)) {
+            $bldgNumber = trim((string) ($row[$bldgIdx] ?? ''));
+            $seedAnyway = in_array($bldgNumber, self::SEED_ANYWAY_BLDG, true);
+            if (!in_array($ficm, self::ALLOWED_FICM, true) && !$seedAnyway) {
                 $skippedFicm++;
                 continue;
             }
 
             $campusName = trim((string) ($row[$campusIdx] ?? ''));
-            $bldgNumber = trim((string) ($row[$bldgIdx] ?? ''));
             $buildingName = $buildingIdx !== null ? trim((string) ($row[$buildingIdx] ?? '')) : $bldgNumber;
             $roomRaw = trim((string) ($row[$roomIdx] ?? ''));
             $roomNumber = $this->stripLetters($roomRaw);
