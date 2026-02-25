@@ -116,7 +116,7 @@
                                         <dd class="col-sm-8">{{ $contact_hours_total }}</dd>
 
                                         <dt class="col-sm-4">Utilization:</dt>
-                                        <dd class="col-sm-8">{{ number_format(($contact_hours_total / $wschBenchmark) * 100, 0) }}%</dd>
+                                        <dd class="col-sm-8">{{ $wschBenchmark > 0 ? number_format(($contact_hours_total / $wschBenchmark) * 100, 0) . '%' : 'N/A' }}</dd>
                                     </dl>
                                     <a href="{{ route('rooms.show', $room->id) }}" class="btn btn-primary">View Room</a>
 
@@ -168,7 +168,7 @@
                                             </span>
                                         </td>
                                         <td class="section-full-percent">
-                                            {{ number_format(($section->day10_enrol / $room->capacity) * 100, 2) }}%</td>
+                                            {{ $room->capacity > 0 ? number_format(($section->day10_enrol / $room->capacity) * 100, 2) . '%' : 'N/A' }}</td>
                                     </tr>
                                 @endforeach
                             @endforeach

@@ -25,7 +25,7 @@
                         @php
                             $totalCourses = $department->courses->count();
                             $totalEnrollments = $department->courses->flatMap->enrollments->count();
-                            $totalCapacity = $department->courses->flatMap->room->sum('capacity');
+                            $totalCapacity = $department->courses->flatMap->sections->sum(fn ($s) => $s->room?->capacity ?? 0);
                         @endphp
                         <tr>
                             <td>

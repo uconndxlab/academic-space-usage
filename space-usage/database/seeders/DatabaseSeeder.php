@@ -15,7 +15,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create a test user
+        $this->call([
+            SpaceDataSeeder::class,
+            NewDataStructure::class,
+        ]);
+
         \App\Models\User::firstOrCreate(
             ['netID' => 'jmk22028'], #I WOULD PUT YOUR NETID HERE SO THAT YOU DONT HAVE TO MANUALLY ADD IT
             ['isAdmin' => true]
@@ -29,7 +33,7 @@ class DatabaseSeeder extends Seeder
             ['isAdmin' => true]
         );
         \App\Models\User::firstOrCreate(
-            ['netID' => 'bak11004'], #I WOULD PUT YOUR NETID HERE SO THAT YOU DONT HAVE TO MANUALLY ADD IT
+            ['netID' => 'bak11004'],
             ['isAdmin' => true]
         );
     }

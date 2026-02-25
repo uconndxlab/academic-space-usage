@@ -34,7 +34,7 @@
                             <td>{{ $course->duration_minutes }}</td>
                             <td>{{ $course->enrl_cap }}</td>
                             <td>{{ $course->day10_enroll }}</td>
-                            <td>{{ $course->room->building_code }} {{ $course->room->room_number }}</td>
+                            <td>{{ $course->sections->first()?->room?->building?->building_code }} {{ $course->sections->first()?->room?->room_number }}</td>
                         </tr>
                 @endforeach
             </tbody>

@@ -533,7 +533,7 @@
                                 <button type="button" class="btn btn-primary" id="applyVariablesCompare">Apply</button>
                             </div>
                             <p class="text-muted mb-4">
-                                <strong>Calculated Count</strong> is the sum of "Rooms Needed" per seat range (WSCH = Enroll × CH × days/week; Rooms Needed = WSCH ÷ WSCH Benchmark; WSCH Benchmark = Capacity × Hours × Seat Util %, rounded up). <strong>Current Count</strong> is the number of unique rooms per campus by seat range.
+                                <strong>Calculated Count</strong> is the sum of "Rooms Needed" per seat range (WSCH = Enroll × CH × days/week; Rooms Needed = WSCH ÷ WSCH Benchmark; WSCH Benchmark = Capacity × Hours × Seat Util %, rounded up). <strong>Current Count</strong> is the number of unique rooms per seat range for the selected department(s) and campus across all terms/years.
                             </p>
 
                             <div class="table-responsive">

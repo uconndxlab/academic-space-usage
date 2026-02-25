@@ -12,10 +12,20 @@ class BuildingController
      */
     public function index()
     {
-        // get buildings sorted by name
-        $buildings = Building::orderBy('description')->get();
+        $buildings = Building::query()
+            ->with('campus')
+            ->whereNotNull('buildings.campus_id')
+            ->join('campuses', 'buildings.campus_id', '=', 'campuses.id')
+            ->orderBy('campuses.name')
+            ->orderBy('buildings.description')
+            ->select('buildings.*')
+            ->get();
 
-        return view('buildings.index', compact('buildings'));
+        $buildingsByCampus = $buildings->groupBy(function (Building $b) {
+            return $b->campus->name;
+        });
+
+        return view('buildings.index', compact('buildingsByCampus'));
     }
 
     /**

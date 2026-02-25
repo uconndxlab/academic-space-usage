@@ -11,9 +11,10 @@ class Section extends Model
 
     protected $casts = [
         'enrollments_by_dept' => 'array',
+        'is_lab' => 'boolean',
     ];
 
-    protected $fillable = ['course_id', 'enrol_cap', 'day10_enrol', 'room_id'];
+    protected $fillable = ['course_id', 'enrol_cap', 'day10_enrol', 'room_id', 'is_lab', 'class_acad_org'];
 
     public function course()
     {
