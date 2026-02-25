@@ -436,6 +436,11 @@
                                     step="0.1">
                             </div>
                             <div class="mb-3">
+                                <label for="enrollmentIncrease" class="form-label">Enrollment Increase (%)</label>
+                                <input type="number" id="enrollmentIncrease" class="form-control" value="0" min="0"
+                                    max="100" step="1">
+                            </div>
+                            <div class="mb-3">
                                 <button type="button" class="btn btn-primary" id="applyVariablesTable">Apply</button>
                             </div>
 
@@ -454,6 +459,8 @@
                                             <th scope="col" data-sort="numeric">CH</th>
                                             <th scope="col" data-sort="numeric">Days/<br>Week</th>
                                             <th scope="col" data-sort="numeric">Duration</th>
+                                            <th scope="col" data-sort="numeric">WSCH<br>Benchmark</th>
+                                            <th scope="col" data-sort="numeric">WSCH</th>
                                             <th scope="col" data-sort="numeric">Rooms<br>Needed</th>
                                             <th scope="col" data-sort="text">Seat<br>Range</th>
                                         </tr>
@@ -489,6 +496,8 @@
                                             <td class="forecast-contact-hours">{{ \Illuminate\Support\Number::format($section['contactHours'], 2) }}</td>
                                             <td class="forecast-days-per-week">{{ \Illuminate\Support\Number::format((int)$section['daysPerWeek']) }}</td>
                                             <td class="forecast-duration">{{ \Illuminate\Support\Number::format($section['contactHours'] * $section['daysPerWeek'], 2) }}</td>
+                                            <td class="forecast-wsch-bench"></td>
+                                            <td class="forecast-wsch-sched"></td>
                                             <td class="forecast-labs-needed"></td>
                                             <td class="forecast-seating-range"></td>
                                         </tr>
@@ -516,10 +525,15 @@
                                     step="0.1">
                             </div>
                             <div class="mb-3">
+                                <label for="enrollmentIncreaseCompare" class="form-label">Enrollment Increase (%)</label>
+                                <input type="number" id="enrollmentIncreaseCompare" class="form-control" value="0" min="0"
+                                    max="100" step="1">
+                            </div>
+                            <div class="mb-3">
                                 <button type="button" class="btn btn-primary" id="applyVariablesCompare">Apply</button>
                             </div>
                             <p class="text-muted mb-4">
-                                <strong>Calculated Count</strong> is the sum of "Rooms Needed" per seat range (Enrollment × Duration ÷ (Seat Util × Capacity × Hours)). <strong>Current Count</strong> is the number of unique rooms per campus by seat range.
+                                <strong>Calculated Count</strong> is the sum of "Rooms Needed" per seat range (WSCH = Enroll × CH × days/week; Rooms Needed = WSCH ÷ WSCH Benchmark; WSCH Benchmark = Capacity × Hours × Seat Util %, rounded up). <strong>Current Count</strong> is the number of unique rooms per campus by seat range.
                             </p>
 
                             <div class="table-responsive">
@@ -657,22 +671,27 @@
                     return seatUtilPercent;
                 }
                 
+                function getEnrollmentIncreaseValue() {
+                    const enrollmentInput = document.querySelector('#enrollmentIncrease');
+                    const enrollmentCompareInput = document.querySelector('#enrollmentIncreaseCompare');
+                    return parseFloat(enrollmentInput?.value || enrollmentCompareInput?.value) || 0;
+                }
+                
                 function updateForecastGrowth(row) {
-                    const enrollment = parseFloat(row.getAttribute('data-original-enrollment'));
-                    const totalClassDays = parseFloat(row.getAttribute('data-total-class-days'));
-                    const contactHours = parseFloat(row.getAttribute('data-contact-hours'));
+                    const baseEnrollment = parseFloat(row.getAttribute('data-original-enrollment'));
+                    const enrollmentIncrease = getEnrollmentIncreaseValue();
+                    const enrollment = baseEnrollment * (1 + enrollmentIncrease / 100);
                     const capacity = parseFloat(row.getAttribute('data-capacity'));
-                    
-                    const seatUtilPercent = getSeatUtilizationValue();
-                    const seatUtilDecimal = seatUtilPercent / 100;
-                    const hours = getHoursValue();
-                    
-                    const duration = contactHours * totalClassDays;
-                    const denominator = seatUtilDecimal * capacity * hours;
-                    const roomsNeeded = denominator > 0 ? (enrollment * duration) / denominator : 0;
-                    const seating75Util = seatUtilDecimal > 0 && capacity > 0 ? Math.round(enrollment / seatUtilDecimal) : 0;
+                    const contactHours = parseFloat(row.getAttribute('data-contact-hours'));
+                    const totalClassDays = parseFloat(row.getAttribute('data-total-class-days'));
+                    const hoursPerWeek = getHoursValue();
+                    const seatUtilDecimal = getSeatUtilizationValue() / 100;
+                    const wschBenchmark = capacity > 0 && hoursPerWeek > 0 && seatUtilDecimal > 0 ? Math.ceil(capacity * hoursPerWeek * seatUtilDecimal) : 0;
+                    const wschScheduled = enrollment * contactHours * totalClassDays;
+                    const roomsNeeded = wschBenchmark > 0 ? wschScheduled / wschBenchmark : 0;
                     const seatingRange = getSeatingRange(capacity);
-                    
+                    row.querySelector('.forecast-wsch-bench').textContent = formatNumber(wschBenchmark, 0);
+                    row.querySelector('.forecast-wsch-sched').textContent = formatNumber(wschScheduled, 0);
                     row.querySelector('.forecast-labs-needed').textContent = formatNumber(roomsNeeded, 2);
                     row.querySelector('.forecast-seating-range').textContent = seatingRange;
                 }
@@ -762,8 +781,11 @@
                     const seatUtilCompareInput = document.querySelector('#percentrageIncreaseCompare');
                     const hoursInput = document.querySelector('#hoursInput');
                     const hoursCompareInput = document.querySelector('#hoursInputCompare');
+                    const enrollmentInput = document.querySelector('#enrollmentIncrease');
+                    const enrollmentCompareInput = document.querySelector('#enrollmentIncreaseCompare');
                     if (seatUtilCompareInput && seatUtilInput) seatUtilInput.value = seatUtilCompareInput.value;
                     if (hoursCompareInput && hoursInput) hoursInput.value = hoursCompareInput.value;
+                    if (enrollmentCompareInput && enrollmentInput) enrollmentInput.value = enrollmentCompareInput.value;
                 }
                 
                 document.querySelector('#applyVariablesTable')?.addEventListener('click', updateAllTables);
