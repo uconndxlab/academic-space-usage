@@ -142,8 +142,8 @@ class NewDataStructure extends Seeder
                 }
                 $termId = $termCache[$termCode];
 
-                // Campus
                 $campusName = trim($data['class_campus'] ?? '');
+                $campusName = $this->normalizeCourseCampusName($campusName);
                 $campusId = null;
                 if ($campusName !== '') {
                     if (!isset($campusCache[$campusName])) {
@@ -321,6 +321,19 @@ class NewDataStructure extends Seeder
     {
         $stripped = preg_replace('/[A-Za-z]/', '', trim($roomNumber));
         return $stripped !== '' ? $stripped : trim($roomNumber);
+    }
+
+    private const CAMPUS_NAME_MAP = [
+        'Storrs'            => 'STORRS CAMPUS',
+        'Hartford'          => 'HARTFORD REGIONAL CAMPUS',
+        'Stamford'          => 'STAMFORD REGIONAL CAMPUS',
+        'Waterbury'         => 'WATERBURY REGIONAL CAMPUS',
+        'Avery Point'       => 'AVERY POINT REGIONAL CAMPUS',
+    ];
+
+    private function normalizeCourseCampusName(string $name): string
+    {
+        return self::CAMPUS_NAME_MAP[$name] ?? $name;
     }
 
     private function roomIsLab(?string $saFacilityType): bool

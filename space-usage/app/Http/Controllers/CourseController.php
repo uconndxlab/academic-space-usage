@@ -136,7 +136,7 @@ class CourseController
             })->values();
 
             $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
-            $perCampusRoomData = self::buildPerCampusRoomDataFromSections($sectionsDataRaw, $rangeLabels);
+            $perCampusRoomData = self::buildPerCampusRoomDataFromSpaceInventory($rangeLabels, $selectedDepartments, $selectedCampus, false);
 
             $currentRanges = array_fill_keys($rangeLabels, 0);
             foreach ($perCampusRoomData as $campusData) {
@@ -275,20 +275,7 @@ class CourseController
             })->values();
 
             $rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
-            $selectedCampusName = $selectedCampus ? (Campus::find($selectedCampus)?->name) : null;
-            $acadOrgNames = Section::query()
-                ->join('courses', 'sections.course_id', '=', 'courses.id')
-                ->where('sections.is_lab', true)
-                ->whereIn('courses.subject_code', $selectedDepartments)
-                ->whereNotNull('sections.class_acad_org')
-                ->where('sections.class_acad_org', '!=', '')
-                ->distinct()
-                ->pluck('sections.class_acad_org')
-                ->map(fn ($s) => trim((string) $s))
-                ->filter()
-                ->values()
-                ->all();
-            $perCampusRoomData = self::buildPerCampusRoomDataFromSpaceInventory($rangeLabels, null, $selectedCampusName, $acadOrgNames);
+            $perCampusRoomData = self::buildPerCampusRoomDataFromSpaceInventory($rangeLabels, $selectedDepartments, $selectedCampus);
             $currentRanges = array_fill_keys($rangeLabels, 0);
             foreach ($perCampusRoomData as $campusData) {
                 foreach ($rangeLabels as $range) {
@@ -480,37 +467,38 @@ class CourseController
     }
 
     /**
-     * Build per-campus room counts from space inventory (Room + Building with campus_id).
-     * Used for labs compare view "Current count". Filter by campus name and optionally by
-     * department: only rooms whose dept_name (SpaceData "Dept Name") matches one of the
-     * given class_acad_org values (from course data).
+     * Count unique rooms used by the selected departments, filtered by lab/non-lab.
+     * Finds rooms via sections → courses (subject_code), so the match is exact.
      */
-    private static function buildPerCampusRoomDataFromSpaceInventory(array $rangeLabels, ?int $campusId = null, ?string $campusName = null, array $acadOrgNames = []): array
+    private static function buildPerCampusRoomDataFromSpaceInventory(array $rangeLabels, array $departments, ?int $campusId = null, bool $labRoomsOnly = true): array
     {
         $query = Room::query()
-            ->join('buildings', 'rooms.building_id', '=', 'buildings.id')
-            ->join('campuses', 'buildings.campus_id', '=', 'campuses.id')
-            ->whereNotNull('buildings.campus_id')
-            ->select('rooms.id', 'rooms.capacity', 'rooms.dept_name', 'buildings.campus_id', 'buildings.description as building_description');
-        if ($campusId !== null) {
-            $query->where('buildings.campus_id', $campusId);
-        }
-        if ($campusName !== null && $campusName !== '') {
-            $query->whereRaw('LOWER(TRIM(campuses.name)) = ?', [strtolower(trim($campusName))]);
-        }
-        if (!empty($acadOrgNames)) {
-            $normalized = array_map(fn ($s) => strtolower(trim((string) $s)), $acadOrgNames);
-            $query->where(function ($q) use ($normalized) {
-                foreach ($normalized as $n) {
-                    $q->orWhereRaw('LOWER(TRIM(rooms.dept_name)) = ?', [$n]);
-                }
+            ->select('rooms.id', 'rooms.capacity', 'sections.campus_id')
+            ->join('sections', 'sections.room_id', '=', 'rooms.id')
+            ->join('courses', 'sections.course_id', '=', 'courses.id')
+            ->whereIn('courses.subject_code', $departments);
+
+        if ($labRoomsOnly) {
+            $query->where('sections.is_lab', true);
+        } else {
+            $query->where(function ($q) {
+                $q->where('sections.is_lab', false)->orWhereNull('sections.is_lab');
             });
         }
-        $rooms = $query->get();
-        $campusIds = $rooms->pluck('campus_id')->unique()->filter()->values();
+
+        if ($campusId !== null) {
+            $query->where('sections.campus_id', $campusId);
+        }
+
+        $rows = $query->get();
+
+        $uniqueRooms = $rows->unique(fn ($r) => $r->id . '-' . $r->campus_id);
+
+        $campusIds = $uniqueRooms->pluck('campus_id')->unique()->filter()->values();
         $campusNames = Campus::whereIn('id', $campusIds)->pluck('name', 'id');
+
         $perCampusData = [];
-        foreach ($rooms->groupBy('campus_id') as $cid => $campusRooms) {
+        foreach ($uniqueRooms->groupBy('campus_id') as $cid => $campusRooms) {
             $rangeCounts = array_fill_keys($rangeLabels, 0);
             foreach ($campusRooms as $room) {
                 $range = self::getSeatingRange((int) ($room->capacity ?? 0));
