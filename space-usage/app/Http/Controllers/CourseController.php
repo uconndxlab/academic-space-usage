@@ -703,7 +703,20 @@ class CourseController
                 });
             })
             ->get();
-        
+
+        $sections = $sections->sortBy(function ($section) {
+            $room = $section->room;
+            $facilityType = $room ? $room->sa_facility_type : '';
+            $isLabRoom = stripos($facilityType, 'Laboratory') !== false;
+            $roomIdentifier = $room
+                ? ($room->room_description ?? $room->room_number ?? '')
+                : '';
+
+            $group = $isLabRoom ? 0 : 1;
+
+            return sprintf('%d-%s-%s', $group, $roomIdentifier, (string) $section->section_number);
+        })->values();
+
         $course->sections = $sections;
     
         $currentEnrollment = $sections->sum('day10_enrol');

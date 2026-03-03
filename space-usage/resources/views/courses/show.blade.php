@@ -181,7 +181,13 @@
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="blockPerDay" class="form-label"># of blocks per day</label>
-                            <input type="number" id="blockPerDay" class="form-control" value="{{ (isset($dayType) && $dayType == 'tuth') ? 6 : 9 }}" min="1"
+                            <input 
+                                type="number" 
+                                id="blockPerDay" 
+                                class="form-control" 
+                                value="{{ (isset($dayType) && $dayType == 'tuth') ? 6 : 9 }}" 
+                                data-lecture-default="{{ (isset($dayType) && $dayType == 'tuth') ? 6 : 9 }}"
+                                min="0.1"
                                 step="0.1">
                         </div>
                     </div>
@@ -219,7 +225,7 @@
                                         <th>Days/<br>Week</th>
                                         <th>Blocks per<br>Week</th>
                                         <th>Enroll<br>Growth</th>
-                                        <th>Seat<br>%</th>
+                                        <th class="seat-or-wsch-header">Seat<br>%</th>
                                         <th>Rooms<br>Needed</th>
                                         <th>Seat<br>Range</th>
                                     </tr>
@@ -237,6 +243,10 @@
                                             $blocksPerWeek = $totalClassDays * ceil($durationMinutes / $blockLengthMinutes);
                                             
                                             $facilityType = $section->room ? $section->room->sa_facility_type : ($selectedFacilityType ?? '');
+                                            
+                                            // Contact hours per class meeting, rounded up to nearest half hour
+                                            $contactHours = $durationMinutes / 60;
+                                            $contactHours = (int) ceil($contactHours * 2) / 2;
                                         @endphp
                                         <tr class="section-row" 
                                             data-original-enrollment="{{ $section->day10_enrol }}"
@@ -244,6 +254,7 @@
                                             data-capacity="{{ $section->room ? $section->room->capacity : 0 }}"
                                             data-total-class-days="{{ $totalClassDays }}"
                                             data-facility-type="{{ $facilityType }}"
+                                            data-contact-hours="{{ $contactHours }}"
                                             data-block-length="{{ $blockLengthMinutes }}">
                                             <td>{{ $section->component_code }}</td>
                                             <td>{{ $section->section_number }}</td>
@@ -289,10 +300,58 @@
     <script>
         (function() {
             const selectedFacilityType = @json($selectedFacilityType ?? '');
-            const defaultBlocksPerDay = 9;
-            
+            let isLabFilter = false;
+            const defaultHoursPerWeek = 28;
+
+            function getLectureDefault() {
+                const blockInput = document.querySelector('#blockPerDay');
+                if (blockInput && blockInput.dataset.lectureDefault) {
+                    return parseFloat(blockInput.dataset.lectureDefault) || 9;
+                }
+                return 9;
+            }
+
+            function isLabTabActive() {
+                const activePane = document.querySelector('#myTabContent .tab-pane.active');
+                const componentCode = activePane ? (activePane.id || '') : '';
+                return componentCode.toLowerCase().includes('lab');
+            }
+
+            function syncLabelAndMode() {
+                isLabFilter = isLabTabActive();
+                const blockPerDayLabel = document.querySelector('label[for="blockPerDay"]');
+                if (blockPerDayLabel) {
+                    blockPerDayLabel.textContent = isLabFilter ? 'Hours per week' : '# of blocks per day';
+                }
+                document.querySelectorAll('.seat-or-wsch-header').forEach(function(th) {
+                    th.innerHTML = isLabFilter ? 'WSCH<br>Benchmark' : 'Seat<br>%';
+                });
+                const blockInput = document.querySelector('#blockPerDay');
+                if (blockInput) {
+                    const lectureDefault = getLectureDefault();
+                    const v = parseFloat(blockInput.value);
+                    if (isLabFilter && (v === 6 || v === 9 || v === lectureDefault)) {
+                        blockInput.value = defaultHoursPerWeek;
+                    } else if (!isLabFilter && v === defaultHoursPerWeek) {
+                        blockInput.value = lectureDefault;
+                    }
+                }
+            }
+
+            document.querySelectorAll('#myTab [data-bs-toggle="tab"]').forEach(function(tab) {
+                tab.addEventListener('shown.bs.tab', function() {
+                    syncLabelAndMode();
+                    updateAllTables();
+                });
+            });
+            syncLabelAndMode();
+
             function getBlockPerDay() {
-                return parseFloat(document.querySelector('#blockPerDay')?.value) || defaultBlocksPerDay;
+                const value = parseFloat(document.querySelector('#blockPerDay')?.value);
+                if (!isNaN(value) && value > 0) {
+                    return value;
+                }
+                return isLabFilter ? defaultHoursPerWeek : getLectureDefault();
             }
             
             function getSeatingRange(seating75Util) {
@@ -336,11 +395,32 @@
                 const durationMinutes = parseFloat(row.getAttribute('data-duration-minutes')) || 0;
                 const blockLengthMinutes = parseFloat(row.getAttribute('data-block-length')) || 50;
                 const facilityType = row.getAttribute('data-facility-type') || selectedFacilityType;
-                
+                const contactHours = parseFloat(row.getAttribute('data-contact-hours')) || 0;
+                const capacity = parseFloat(row.getAttribute('data-capacity')) || 0;
+
                 const seatUtilPercent = getSeatUtilizationValue();
                 const seatUtilDecimal = seatUtilPercent / 100;
-                
+
                 const growthEnrollment = Math.round(originalEnrollment * (1 + growthPercentage / 100));
+                
+                // When filtering by lab rooms, use the same WSCH / hours-per-week calculation
+                // as the labs index view. Lectures keep the existing blocks-per-day logic.
+                if (isLabFilter) {
+                    const hoursPerWeek = getBlockPerDay();
+                    const wschBenchmark = capacity > 0 && hoursPerWeek > 0 && seatUtilDecimal > 0
+                        ? Math.ceil(capacity * hoursPerWeek * seatUtilDecimal)
+                        : 0;
+                    const wschScheduled = growthEnrollment * contactHours * totalClassDays;
+                    const roomsNeeded = wschBenchmark > 0 ? wschScheduled / wschBenchmark : 0;
+                    const seatingRange = getSeatingRange(capacity);
+
+                    row.querySelector('.forecast-enroll-growth').textContent = formatNumber(growthEnrollment);
+                    row.querySelector('.forecast-seating-75').textContent = formatNumber(wschBenchmark);
+                    row.querySelector('.forecast-rooms-needed').textContent = formatNumber(roomsNeeded, 2);
+                    row.querySelector('.forecast-seating-range').textContent = seatingRange;
+                    return;
+                }
+
                 const seating75Util = seatUtilDecimal > 0 ? Math.round(growthEnrollment / seatUtilDecimal) : 0;
                 
                 // Calculate blocks needed per week
