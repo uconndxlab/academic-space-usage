@@ -1,4 +1,142 @@
 .bg-danger {
     background-color: #dc3545 !important;
-    color: white!important;
+    color: white !important;
+}
+
+.container {
+    margin-top: 20px;
+}
+
+.table-responsive {
+    margin-top: 20px;
+}
+
+tr.table-secondary {
+    font-size: 0.9em;
+}
+
+tr.table-course {
+    cursor: pointer;
+}
+
+tr.table-course:hover {
+    background-color: #f8f9fa;
+}
+
+.room-enrollment {
+    cursor: pointer;
+}
+
+.room-enrollment:hover {
+    text-decoration: underline;
+}
+
+.card-title {
+    font-size: 1.2em;
+}
+
+.card-text {
+    font-size: 1em;
+}
+
+.card {
+    height: 100%;
+}
+
+tr {
+    cursor: unset !important;
+}
+
+body {
+    background-color: #f8f9fa;
+    color: #002855;
+}
+
+.navbar {
+    background-color: #002855;
+}
+
+.navbar a {
+    color: #ffffff;
+}
+
+.btn-primary {
+    background-color: #002855;
+    border-color: #002855;
+}
+
+.btn-primary:hover {
+    background-color: #001f3f;
+    border-color: #001a35;
+}
+
+.table {
+    background-color: #ffffff;
+    color: #002855;
+}
+
+.table thead th {
+    background-color: #002855;
+    color: #ffffff;
+}
+
+.table tbody tr:nth-child(odd) {
+    background-color: #f2f2f2;
+}
+
+.table tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+#departmentDropdownMenu {
+    min-width: 100%;
+}
+
+#departmentDropdownMenu .form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+#departmentDropdownMenu .form-check {
+    cursor: pointer;
+}
+
+#departmentDropdownMenu .form-check-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+.department-item {
+    display: block;
+}
+
+.department-item.hidden {
+    display: none;
+}
+
+.sticky-header-table thead.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #002855;
+    color: #ffffff;
+}
+
+.sticky-header-table thead.sticky-top th {
+    background-color: #002855;
+    color: #ffffff;
+}
+
+th[data-sort] {
+    cursor: pointer;
+}
+
+th[data-sort].sort-asc::after {
+    content: ' ▲';
+    opacity: 0.7;
+}
+
+th[data-sort].sort-desc::after {
+    content: ' ▼';
+    opacity: 0.7;
 }

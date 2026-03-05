@@ -411,20 +411,6 @@
     @endif
 </div>
 
-<style>
-    #departmentDropdownMenu { min-width: 100%; }
-    #departmentDropdownMenu .form-check-input:checked { background-color: #0d6efd; border-color: #0d6efd; }
-    #departmentDropdownMenu .form-check, #departmentDropdownMenu .form-check-label { cursor: pointer; }
-    #departmentDropdownMenu .form-check-label { user-select: none; }
-    .department-item { display: block; }
-    .department-item.hidden { display: none; }
-    .sticky-header-table thead.sticky-top { position: sticky; top: 0; z-index: 10; background-color: #002855; color: #ffffff; }
-    .sticky-header-table thead.sticky-top th { background-color: #002855; color: #ffffff; }
-    th[data-sort] { cursor: pointer; }
-    th[data-sort].sort-asc::after { content: ' ▲'; opacity: 0.7; }
-    th[data-sort].sort-desc::after { content: ' ▼'; opacity: 0.7; }
-</style>
-
 <script>
 document.getElementById('filterForm').addEventListener('submit', function(e) {
     const selectedDepts = Array.from(document.querySelectorAll('.department-checkbox:checked')).map(cb => cb.value);
@@ -508,13 +494,9 @@ document.getElementById('filterForm').addEventListener('submit', function(e) {
     const blockLengthMinutes = dayType === 'tuth' ? 75 : 50;
     const daysInWeek = dayType === 'tuth' ? 2 : 3;
 
-    function getblockPerDay() {
-        return parseFloat(document.querySelector('#blockPerDay')?.value) || defaultBlocksPerDay;
-    }
-
-    function getTotalBlocksAvailable() {
-        return getblockPerDay() * daysInWeek;
-    }
+    const blockPerDayEl = document.querySelector('#blockPerDay');
+    const percentageEl = document.querySelector('#percentageIncrease');
+    const enrollmentEl = document.querySelector('#enrollmentIncrease');
 
     function getSeatingRange(seating75Util) {
         if (seating75Util <= 0) return 'N/A';
@@ -538,29 +520,33 @@ document.getElementById('filterForm').addEventListener('submit', function(e) {
         return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
     }
 
-    function updateForecastGrowth(row, growthPercentage) {
+    function updateForecastGrowth(row, growthPercentage, inputs) {
         const originalEnrollment = parseFloat(row.getAttribute('data-original-enrollment'));
         const totalClassDays = parseFloat(row.getAttribute('data-total-class-days'));
         const durationMinutes = parseFloat(row.getAttribute('data-duration-minutes')) || 0;
-        const seatUtilPercent = parseFloat(document.querySelector('#percentageIncrease')?.value || 75) || 75;
-        const seatUtilDecimal = seatUtilPercent / 100;
+        const seatUtilDecimal = inputs.seatUtilPercent / 100;
         const growthEnrollment = Math.round(originalEnrollment * (1 + growthPercentage / 100));
         const seating75Util = seatUtilDecimal > 0 ? Math.round(growthEnrollment / seatUtilDecimal) : 0;
 
         const blocksNeededByClass = totalClassDays * Math.ceil(durationMinutes / blockLengthMinutes);
-        const totalBlocksAvailable = getTotalBlocksAvailable();
-        const roomsNeeded = totalBlocksAvailable > 0 ? blocksNeededByClass / totalBlocksAvailable : 0;
-        const seatingRange = getSeatingRange(seating75Util);
+        const roomsNeeded = inputs.totalBlocksAvailable > 0 ? blocksNeededByClass / inputs.totalBlocksAvailable : 0;
 
         row.querySelector('.forecast-enroll-growth').textContent = formatNumber(growthEnrollment);
         row.querySelector('.forecast-seating-75').textContent = formatNumber(seating75Util);
         row.querySelector('.forecast-rooms-needed').textContent = formatNumber(roomsNeeded, 2);
-        row.querySelector('.forecast-seating-range').textContent = seatingRange;
+        row.querySelector('.forecast-seating-range').textContent = getSeatingRange(seating75Util);
     }
 
     function updateAllTables() {
-        const enrollmentIncrease = parseFloat(document.querySelector('#enrollmentIncrease')?.value || 0) || 0;
-        document.querySelectorAll('.course-row').forEach(row => updateForecastGrowth(row, enrollmentIncrease));
+        const enrollmentIncrease = parseFloat(enrollmentEl?.value) || 0;
+        const seatUtilPercent = parseFloat(percentageEl?.value) || 75;
+        const blockPerDay = parseFloat(blockPerDayEl?.value) || defaultBlocksPerDay;
+        const totalBlocksAvailable = blockPerDay * daysInWeek;
+        const inputs = { seatUtilPercent, totalBlocksAvailable };
+        const rows = document.querySelectorAll('.course-row');
+        for (let i = 0; i < rows.length; i++) {
+            updateForecastGrowth(rows[i], enrollmentIncrease, inputs);
+        }
     }
 
     document.querySelector('#applyVariablesMWF')?.addEventListener('click', updateAllTables);

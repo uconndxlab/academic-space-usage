@@ -13,129 +13,15 @@
     <div class="container">
         <h1 class="mb-4">Lab List</h1>
         <div class="mb-4 py-2">
-            <form method="GET" action="{{ route('courses.labs') }}" id="filterForm">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="termFilter" class="form-label">Filter by Term <span class="text-danger">*</span></label>
-                        <select name="term" id="termFilter" class="form-select" required>
-                            <option value="">-- Select Term --</option>
-                            @foreach ($terms as $term)
-                                <option @selected($term->id == request('term')) value="{{ $term->id }}">{{ $term->term_code }} - {{ $term->term_descr }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label for="departmentFilter" class="form-label">Filter by Department <span class="text-danger">*</span></label>
-                        <div class="dropdown" id="departmentDropdown">
-                            <button class="form-select text-start" type="button" id="departmentFilterButton" data-bs-toggle="dropdown" aria-expanded="false">
-                                <span id="departmentFilterText">Select Departments</span>
-                            </button>
-                            <ul class="dropdown-menu w-100 p-2" id="departmentDropdownMenu" style="max-height: 300px; overflow-y: auto;" onclick="event.stopPropagation();">
-                                <li class="px-2 py-2 sticky-top bg-white" style="z-index: 1;">
-                                    <input type="text" class="form-control form-control-sm" id="departmentSearch" placeholder="Search departments..." autocomplete="off">
-                                </li>
-                                <li><hr class="dropdown-divider my-1"></li>
-                                <li class="px-2 py-1">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="selectAllDepartments">
-                                        <label class="form-check-label fw-bold" for="selectAllDepartments">
-                                            Select All
-                                        </label>
-                                    </div>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                @foreach ($departments as $department)
-                                <li class="px-2 py-1 department-item" data-department="{{ strtolower($department) }}">
-                                    <div class="form-check">
-                                        <input class="form-check-input department-checkbox" type="checkbox" 
-                                            name="department[]" 
-                                            value="{{ $department }}" 
-                                            id="dept_{{ $loop->index }}"
-                                            @checked(in_array($department, $selectedDepartments))>
-                                        <label class="form-check-label" for="dept_{{ $loop->index }}">
-                                            {{ $department }}
-                                        </label>
-                                    </div>
-                                </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label for="campusFilter" class="form-label">Filter by Campus <span class="text-danger">*</span></label>
-                        <select name="campus" id="campusFilter" class="form-select" required>
-                            <option value="">-- Select Campus --</option>
-                            @foreach ($campuses as $campus)
-                                <option @selected($campus->id == request('campus')) value="{{ $campus->id }}">{{ $campus->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                </div>
-
-                <div class="mt-3">
-                    <input type="submit" value="Filter" class="btn btn-primary" id="filterSubmit">
-                </div>
-            </form>
-            
-            <script>
-                document.getElementById('filterForm').addEventListener('submit', function(e) {
-                    const selectedDepts = Array.from(document.querySelectorAll('.department-checkbox:checked')).map(cb => cb.value);
-                    if (selectedDepts.length === 0) {
-                        e.preventDefault();
-                        alert('Please select at least one department.');
-                        return false;
-                    }
-                });
-            </script>
+            @include('partials.courses.filter-form', [
+                'filterAction' => route('courses.labs'),
+                'terms' => $terms,
+                'departments' => $departments,
+                'campuses' => $campuses,
+                'selectedDepartments' => $selectedDepartments,
+            ])
         </div>
 
-        <style>
-            #departmentDropdownMenu {
-                min-width: 100%;
-            }
-            #departmentDropdownMenu .form-check-input:checked {
-                background-color: #0d6efd;
-                border-color: #0d6efd;
-            }
-            #departmentDropdownMenu .form-check {
-                cursor: pointer;
-            }
-            #departmentDropdownMenu .form-check-label {
-                cursor: pointer;
-                user-select: none;
-            }
-            .department-item {
-                display: block;
-            }
-            .department-item.hidden {
-                display: none;
-            }
-            .sticky-header-table thead.sticky-top {
-                position: sticky;
-                top: 0;
-                z-index: 10;
-                background-color: #002855;
-                color: #ffffff;
-            }
-            .sticky-header-table thead.sticky-top th {
-                background-color: #002855;
-                color: #ffffff;
-            }
-            th[data-sort] {
-                cursor: pointer;
-            }
-            th[data-sort].sort-asc::after {
-                content: ' ▲';
-                opacity: 0.7;
-            }
-            th[data-sort].sort-desc::after {
-                content: ' ▼';
-                opacity: 0.7;
-            }
-        </style>
         <script>
             (function() {
                 const filters = {
@@ -623,13 +509,14 @@
             
             <script>
                 const rangeLabels = ['0-25', '26-49', '50-74', '75-124', '125-174', '175-224', '225-249', '250-299', '300-349', '350-399', '400+'];
-                
-                function getHoursValue() {
-                    const hoursInput = document.querySelector('#hoursInput');
-                    const hoursCompareInput = document.querySelector('#hoursInputCompare');
-                    return parseFloat(hoursInput?.value || hoursCompareInput?.value) || 28;
-                }
-                
+
+                const hoursInputEl = document.querySelector('#hoursInput');
+                const hoursCompareEl = document.querySelector('#hoursInputCompare');
+                const seatUtilEl = document.querySelector('#percentrageIncrease');
+                const seatUtilCompareEl = document.querySelector('#percentrageIncreaseCompare');
+                const enrollmentEl = document.querySelector('#enrollmentIncrease');
+                const enrollmentCompareEl = document.querySelector('#enrollmentIncreaseCompare');
+
                 function getSeatingRange(seating75Util) {
                     if (seating75Util <= 0) return 'N/A';
                     if (seating75Util <= 25) return '0-25';
@@ -660,46 +547,35 @@
                 
                 function parseFormattedNumber(value) {
                     if (!value) return 0;
-                    // Remove commas and parse
                     return parseFloat(value.toString().replace(/,/g, '')) || 0;
                 }
-                
-                function getSeatUtilizationValue() {
-                    const seatUtilInput = document.querySelector('#percentrageIncrease');
-                    const seatUtilCompareInput = document.querySelector('#percentrageIncreaseCompare');
-                    const seatUtilPercent = parseFloat(seatUtilInput?.value || seatUtilCompareInput?.value) || 80;
-                    return seatUtilPercent;
-                }
-                
-                function getEnrollmentIncreaseValue() {
-                    const enrollmentInput = document.querySelector('#enrollmentIncrease');
-                    const enrollmentCompareInput = document.querySelector('#enrollmentIncreaseCompare');
-                    return parseFloat(enrollmentInput?.value || enrollmentCompareInput?.value) || 0;
-                }
-                
-                function updateForecastGrowth(row) {
+
+                function updateForecastGrowth(row, inputs) {
                     const baseEnrollment = parseFloat(row.getAttribute('data-original-enrollment'));
-                    const enrollmentIncrease = getEnrollmentIncreaseValue();
-                    const enrollment = baseEnrollment * (1 + enrollmentIncrease / 100);
+                    const enrollment = baseEnrollment * (1 + inputs.enrollmentIncrease / 100);
                     const capacity = parseFloat(row.getAttribute('data-capacity'));
                     const contactHours = parseFloat(row.getAttribute('data-contact-hours'));
                     const totalClassDays = parseFloat(row.getAttribute('data-total-class-days'));
-                    const hoursPerWeek = getHoursValue();
-                    const seatUtilDecimal = getSeatUtilizationValue() / 100;
-                    const wschBenchmark = capacity > 0 && hoursPerWeek > 0 && seatUtilDecimal > 0 ? Math.ceil(capacity * hoursPerWeek * seatUtilDecimal) : 0;
+                    const seatUtilDecimal = inputs.seatUtilPercent / 100;
+                    const wschBenchmark = capacity > 0 && inputs.hoursPerWeek > 0 && seatUtilDecimal > 0 ? Math.ceil(capacity * inputs.hoursPerWeek * seatUtilDecimal) : 0;
                     const wschScheduled = enrollment * contactHours * totalClassDays;
                     const roomsNeeded = wschBenchmark > 0 ? wschScheduled / wschBenchmark : 0;
-                    const seatingRange = getSeatingRange(capacity);
+
                     row.querySelector('.forecast-wsch-bench').textContent = formatNumber(wschBenchmark, 0);
                     row.querySelector('.forecast-wsch-sched').textContent = formatNumber(wschScheduled, 0);
                     row.querySelector('.forecast-labs-needed').textContent = formatNumber(roomsNeeded, 2);
-                    row.querySelector('.forecast-seating-range').textContent = seatingRange;
+                    row.querySelector('.forecast-seating-range').textContent = getSeatingRange(capacity);
                 }
-                
+
                 function updateAllTables() {
-                    document.querySelectorAll('.course-row').forEach(row => {
-                        updateForecastGrowth(row);
-                    });
+                    const enrollmentIncrease = parseFloat(enrollmentEl?.value || enrollmentCompareEl?.value) || 0;
+                    const seatUtilPercent = parseFloat(seatUtilEl?.value || seatUtilCompareEl?.value) || 80;
+                    const hoursPerWeek = parseFloat(hoursInputEl?.value || hoursCompareEl?.value) || 28;
+                    const inputs = { enrollmentIncrease, seatUtilPercent, hoursPerWeek };
+                    const rows = document.querySelectorAll('.course-row');
+                    for (let i = 0; i < rows.length; i++) {
+                        updateForecastGrowth(rows[i], inputs);
+                    }
                     updateCompareView();
                 }
                 
@@ -777,15 +653,9 @@
                 }
                 
                 function syncCompareToTable() {
-                    const seatUtilInput = document.querySelector('#percentrageIncrease');
-                    const seatUtilCompareInput = document.querySelector('#percentrageIncreaseCompare');
-                    const hoursInput = document.querySelector('#hoursInput');
-                    const hoursCompareInput = document.querySelector('#hoursInputCompare');
-                    const enrollmentInput = document.querySelector('#enrollmentIncrease');
-                    const enrollmentCompareInput = document.querySelector('#enrollmentIncreaseCompare');
-                    if (seatUtilCompareInput && seatUtilInput) seatUtilInput.value = seatUtilCompareInput.value;
-                    if (hoursCompareInput && hoursInput) hoursInput.value = hoursCompareInput.value;
-                    if (enrollmentCompareInput && enrollmentInput) enrollmentInput.value = enrollmentCompareInput.value;
+                    if (seatUtilCompareEl && seatUtilEl) seatUtilEl.value = seatUtilCompareEl.value;
+                    if (hoursCompareEl && hoursInputEl) hoursInputEl.value = hoursCompareEl.value;
+                    if (enrollmentCompareEl && enrollmentEl) enrollmentEl.value = enrollmentCompareEl.value;
                 }
                 
                 document.querySelector('#applyVariablesTable')?.addEventListener('click', updateAllTables);

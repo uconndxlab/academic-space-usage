@@ -2,37 +2,31 @@
 @section('title', 'Course Details')
 @section('content')
     <div class="container">
-        {{-- breadcrumbs --}}
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb item">
-                    @php
-                        $breadcrumbParams = [];
-                        if ($selectedCampus) {
-                            $breadcrumbParams['campus'] = $selectedCampus->id;
-                        }
-                        if ($selectedFacilityType) {
-                            $breadcrumbParams['sa_facility_type'] = $selectedFacilityType;
-                        }
-                        if ($course->subject_code) {
-                            $breadcrumbParams['department'] = $course->subject_code;
-                        }
-                        if ($course->term_id) {
-                            $breadcrumbParams['term'] = $course->term_id;
-                        }
-                        if (isset($dayType) && $dayType !== 'all') {
-                            $breadcrumbParams['day_type'] = $dayType;
-                        }
-                        $breadcrumbQuery = !empty($breadcrumbParams) ? '?' . http_build_query($breadcrumbParams) : '';
-                    @endphp
-                    <a href="{{ route('courses.index') }}{{ $breadcrumbQuery }}">Courses</a> &raquo;
-                </li>
-                <li class="breadcrumb item active" aria-current="page">
-                    {{ $course->catalog_number }}
-                </li>
-            </ol>
-        </nav>
-        
+        @php
+            $breadcrumbParams = [];
+            if (isset($selectedCampus) && $selectedCampus) {
+                $breadcrumbParams['campus'] = $selectedCampus->id;
+            }
+            if (isset($selectedFacilityType) && $selectedFacilityType) {
+                $breadcrumbParams['sa_facility_type'] = $selectedFacilityType;
+            }
+            if ($course->subject_code) {
+                $breadcrumbParams['department'] = $course->subject_code;
+            }
+            if ($course->term_id) {
+                $breadcrumbParams['term'] = $course->term_id;
+            }
+            if (isset($dayType) && $dayType !== 'all') {
+                $breadcrumbParams['day_type'] = $dayType;
+            }
+            $breadcrumbQuery = !empty($breadcrumbParams) ? '?' . http_build_query($breadcrumbParams) : '';
+            $breadcrumbItems = [
+                ['label' => 'Courses', 'url' => route('courses.index') . $breadcrumbQuery],
+                ['label' => $course->catalog_number],
+            ];
+        @endphp
+        @include('partials.breadcrumb', ['items' => $breadcrumbItems])
+
         {{-- course details --}}
 
         <div class="card mb-3">
@@ -303,10 +297,13 @@
             let isLabFilter = false;
             const defaultHoursPerWeek = 28;
 
+            const enrollmentInput = document.querySelector('#enrollmentIncrease');
+            const seatUtilInput = document.querySelector('#percentageIncrease');
+            const blockPerDayInput = document.querySelector('#blockPerDay');
+
             function getLectureDefault() {
-                const blockInput = document.querySelector('#blockPerDay');
-                if (blockInput && blockInput.dataset.lectureDefault) {
-                    return parseFloat(blockInput.dataset.lectureDefault) || 9;
+                if (blockPerDayInput && blockPerDayInput.dataset.lectureDefault) {
+                    return parseFloat(blockPerDayInput.dataset.lectureDefault) || 9;
                 }
                 return 9;
             }
@@ -326,14 +323,13 @@
                 document.querySelectorAll('.seat-or-wsch-header').forEach(function(th) {
                     th.innerHTML = isLabFilter ? 'WSCH<br>Benchmark' : 'Seat<br>%';
                 });
-                const blockInput = document.querySelector('#blockPerDay');
-                if (blockInput) {
+                if (blockPerDayInput) {
                     const lectureDefault = getLectureDefault();
-                    const v = parseFloat(blockInput.value);
+                    const v = parseFloat(blockPerDayInput.value);
                     if (isLabFilter && (v === 6 || v === 9 || v === lectureDefault)) {
-                        blockInput.value = defaultHoursPerWeek;
+                        blockPerDayInput.value = defaultHoursPerWeek;
                     } else if (!isLabFilter && v === defaultHoursPerWeek) {
-                        blockInput.value = lectureDefault;
+                        blockPerDayInput.value = lectureDefault;
                     }
                 }
             }
@@ -347,7 +343,7 @@
             syncLabelAndMode();
 
             function getBlockPerDay() {
-                const value = parseFloat(document.querySelector('#blockPerDay')?.value);
+                const value = parseFloat(blockPerDayInput?.value);
                 if (!isNaN(value) && value > 0) {
                     return value;
                 }
@@ -378,86 +374,58 @@
                     maximumFractionDigits: decimals 
                 });
             }
-            
-            function getSeatUtilizationValue() {
-                const seatUtilInput = document.querySelector('#percentageIncrease');
-                return parseFloat(seatUtilInput?.value) || 75;
-            }
-            
-            function getEnrollmentIncreaseValue() {
-                const enrollmentInput = document.querySelector('#enrollmentIncrease');
-                return parseFloat(enrollmentInput?.value) || 0;
-            }
-            
-            function updateForecastGrowth(row, growthPercentage) {
+
+            function updateForecastGrowth(row, growthPercentage, inputs) {
                 const originalEnrollment = parseFloat(row.getAttribute('data-original-enrollment')) || 0;
                 const totalClassDays = parseFloat(row.getAttribute('data-total-class-days')) || 0;
                 const durationMinutes = parseFloat(row.getAttribute('data-duration-minutes')) || 0;
                 const blockLengthMinutes = parseFloat(row.getAttribute('data-block-length')) || 50;
-                const facilityType = row.getAttribute('data-facility-type') || selectedFacilityType;
                 const contactHours = parseFloat(row.getAttribute('data-contact-hours')) || 0;
                 const capacity = parseFloat(row.getAttribute('data-capacity')) || 0;
 
-                const seatUtilPercent = getSeatUtilizationValue();
-                const seatUtilDecimal = seatUtilPercent / 100;
-
+                const seatUtilDecimal = inputs.seatUtilPercent / 100;
                 const growthEnrollment = Math.round(originalEnrollment * (1 + growthPercentage / 100));
-                
-                // When filtering by lab rooms, use the same WSCH / hours-per-week calculation
-                // as the labs index view. Lectures keep the existing blocks-per-day logic.
+
                 if (isLabFilter) {
-                    const hoursPerWeek = getBlockPerDay();
-                    const wschBenchmark = capacity > 0 && hoursPerWeek > 0 && seatUtilDecimal > 0
-                        ? Math.ceil(capacity * hoursPerWeek * seatUtilDecimal)
+                    const wschBenchmark = capacity > 0 && inputs.blockPerDay > 0 && seatUtilDecimal > 0
+                        ? Math.ceil(capacity * inputs.blockPerDay * seatUtilDecimal)
                         : 0;
                     const wschScheduled = growthEnrollment * contactHours * totalClassDays;
                     const roomsNeeded = wschBenchmark > 0 ? wschScheduled / wschBenchmark : 0;
-                    const seatingRange = getSeatingRange(capacity);
 
                     row.querySelector('.forecast-enroll-growth').textContent = formatNumber(growthEnrollment);
                     row.querySelector('.forecast-seating-75').textContent = formatNumber(wschBenchmark);
                     row.querySelector('.forecast-rooms-needed').textContent = formatNumber(roomsNeeded, 2);
-                    row.querySelector('.forecast-seating-range').textContent = seatingRange;
+                    row.querySelector('.forecast-seating-range').textContent = getSeatingRange(capacity);
                     return;
                 }
 
                 const seating75Util = seatUtilDecimal > 0 ? Math.round(growthEnrollment / seatUtilDecimal) : 0;
-                
-                // Calculate blocks needed per week
                 const blocksPerWeek = totalClassDays * Math.ceil(durationMinutes / blockLengthMinutes);
-                const totalBlocksAvailable = getBlockPerDay() * totalClassDays;
+                const totalBlocksAvailable = inputs.blockPerDay * totalClassDays;
                 const roomsNeeded = totalBlocksAvailable > 0 ? blocksPerWeek / totalBlocksAvailable : 0;
-                
-                const seatingRange = getSeatingRange(seating75Util);
-                
+
                 row.querySelector('.forecast-enroll-growth').textContent = formatNumber(growthEnrollment);
                 row.querySelector('.forecast-seating-75').textContent = formatNumber(seating75Util);
                 row.querySelector('.forecast-rooms-needed').textContent = formatNumber(roomsNeeded, 2);
-                row.querySelector('.forecast-seating-range').textContent = seatingRange;
+                row.querySelector('.forecast-seating-range').textContent = getSeatingRange(seating75Util);
             }
-            
+
             function updateAllTables() {
-                const enrollmentIncrease = getEnrollmentIncreaseValue();
-                document.querySelectorAll('.section-row').forEach(row => {
-                    updateForecastGrowth(row, enrollmentIncrease);
-                });
+                const enrollmentIncrease = parseFloat(enrollmentInput?.value) || 0;
+                const seatUtilPercent = parseFloat(seatUtilInput?.value) || 75;
+                const blockPerDay = getBlockPerDay();
+                const inputs = { seatUtilPercent, blockPerDay };
+                const rows = document.querySelectorAll('.section-row');
+                for (let i = 0; i < rows.length; i++) {
+                    updateForecastGrowth(rows[i], enrollmentIncrease, inputs);
+                }
             }
-            
-            const forecastInput = document.querySelector('#enrollmentIncrease');
-            const seatUtilInput = document.querySelector('#percentageIncrease');
-            const blockPerDayInput = document.querySelector('#blockPerDay');
-            
-            if (forecastInput) {
-                forecastInput.addEventListener('input', updateAllTables);
-            }
-            if (seatUtilInput) {
-                seatUtilInput.addEventListener('input', updateAllTables);
-            }
-            if (blockPerDayInput) {
-                blockPerDayInput.addEventListener('input', updateAllTables);
-            }
-            
-            // Initialize on page load
+
+            if (enrollmentInput) enrollmentInput.addEventListener('input', updateAllTables);
+            if (seatUtilInput) seatUtilInput.addEventListener('input', updateAllTables);
+            if (blockPerDayInput) blockPerDayInput.addEventListener('input', updateAllTables);
+
             updateAllTables();
         })();
     </script>
